@@ -1,0 +1,21 @@
+# Snippet để merge vào docker-compose.yml chung của n8n stack trên OrbStack.
+# KHÔNG phải file compose độc lập — không biết cấu trúc network/volume hiện tại của
+# stack n8n + Postgres 5433, cần dev có quyền truy cập thật ghép vào cho đúng.
+#
+# Đây là container dạng "job": không có "restart: always", không expose port,
+# không chạy thường trực — n8n gọi chạy theo lịch bằng:
+#   docker compose run --rm registry-crawler
+#
+services:
+  registry-crawler:
+    build:
+      context: ./track-a/scripts
+    volumes:
+      - ./track-a/data:/data   # nơi CSV baseline được ghi ra, đổi path cho khớp host thật
+    networks:
+      - <tên network chung với n8n + Postgres>  # điền theo stack thật, xem plan chính §9.1
+    environment:
+      - DATABASE_URL=postgresql://<user>:<pass>@<postgres-service-name>:5432/<db>
+      # DATABASE_URL chưa dùng trong script hiện tại (script chỉ ghi CSV) — sẽ cần khi
+      # thêm chế độ ghi thẳng Postgres cho crawl weekly, xem A2-knx-crawler.md phần
+      # "Hành vi mong muốn" (UPSERT + anomaly check), còn thiếu credential thật để làm tiếp.

@@ -81,6 +81,49 @@ này chính là input cho bước import ở [A1-schema-import.md](A1-schema-imp
 sửa script để ghi thẳng vào Postgres cho crawl weekly sau này (xem A1 về lý do dùng CSV cho
 baseline, ghi thẳng DB cho weekly).
 
+### Đóng gói Docker — đã viết và test thật
+
+[`scripts/Dockerfile`](scripts/Dockerfile) — build xong, chạy thử trong container thật (không
+chỉ build suông): `docker run --rm -v $(pwd)/data:/data registry-crawler --max-pages 2` → ra
+đúng 24 thiết bị, mount volume hoạt động, container tự thoát sau khi xong (đúng thiết kế "job",
+không phải service sống 24/7 như `news-extractor`).
+
+[`scripts/docker-compose.snippet.yml`](scripts/docker-compose.snippet.yml) — snippet để dev
+merge vào compose file thật của stack n8n/Postgres trên OrbStack (không tự viết được compose
+file đầy đủ vì không biết cấu trúc network/volume hiện tại — xem ghi chú trong file).
+
+**Chưa làm ở container:** chế độ ghi thẳng Postgres (`DATABASE_URL`) cho crawl weekly — script
+hiện tại chỉ ghi CSV. Cần thêm khi có credential Postgres thật (câu hỏi #5 overview) và cần
+implement phần UPSERT + anomaly check ở "Hành vi mong muốn" phía trên.
+
+## Đã viết và test thật — UPSERT + anomaly check + crawl_log
+
+[`scripts/import_and_diff.py`](scripts/import_and_diff.py) — generic cho mọi `registry_key`
+(dùng chung cho KNX lẫn CSA Matter), nhận CSV có 3 cột bắt buộc (`external_id, brand, model`),
+các cột khác tự gom vào `attributes`.
+
+Test end-to-end bằng Postgres 17 tạm (Docker) + dữ liệu CSA Matter thật (4.948 thiết bị):
+- Baseline import: 4.948 thiết bị → `new_count=4948, removed_count=0` ✅
+- Mô phỏng tuần 2 (xoá 1, thêm 2 thiết bị giả): `new_count=2, removed_count=1`, đúng từng
+  thiết bị (kiểm tra `status` từng dòng) ✅
+- Mô phỏng anomaly (crawl chỉ trả 49/4.949, ~1%): tự động `aborted_anomaly`, **không** mark
+  removed hàng loạt, `registry.devices` giữ nguyên ✅
+- Join `brands_of_interest` trên dữ liệu thật: query lọc đúng thiết bị mới thuộc brand quan
+  tâm, không lẫn thiết bị cũ ✅ (xem thêm phát hiện quan trọng ở dưới)
+
+**Phát hiện bug khi test — đã sửa:** ban đầu dùng đồng hồ Python (`datetime.now()`) để ghi
+`crawl_log.run_at`, trong khi `first_seen_at` của device dùng `now()` của chính Postgres.
+2 giá trị này lệch nhau ~1-2ms do clock drift giữa máy chạy script và container Postgres —
+đủ để query "thiết bị nào mới từ lần crawl này" (`first_seen_at >= run_at`) bỏ sót thiết bị mới
+trong thực tế test. Trong production, script và Postgres thường ở 2 container khác nhau
+(script có thể chạy trong n8n hoặc container riêng, Postgres ở container khác) — lệch giờ
+NTP giữa 2 container hoàn toàn có thể xảy ra và gây lỗi y hệt, khó phát hiện vì không crash,
+chỉ âm thầm bỏ sót alert. **Đã sửa:** lấy mốc `now()` từ chính Postgres (`SELECT now()`)
+ngay đầu transaction, dùng giá trị đó cho `crawl_log.run_at` — đảm bảo cùng 1 đồng hồ với
+`first_seen_at`. Đo `duration_ms` tách riêng bằng `clock_timestamp()` (khác `now()` — `now()`
+trong Postgres cố định suốt transaction, không tăng theo thời gian thực, dùng để đo duration
+sẽ luôn ra 0).
+
 ## Hành vi mong muốn
 
 ```
@@ -123,22 +166,34 @@ của KNX certified DB mà hiện chưa có dữ liệu lịch sử để tính.
 ## Output cần cho A3
 
 Sau mỗi lần chạy thành công, A3 cần truy vấn được: "những device nào vừa có
-`first_seen_at` = lần chạy này" — dùng trực tiếp cột có sẵn, không cần thêm bảng riêng:
+`first_seen_at` = lần chạy này". Đã test thật (xem trên) — dùng `run_at` từ chính
+`registry.crawl_log` (giá trị `now()` lấy từ Postgres, không phải đồng hồ script) làm mốc,
+kèm `status = 'active'` để loại trừ device vừa bị đánh removed cùng lúc:
 
 ```sql
 SELECT * FROM registry.devices
-WHERE registry_key = 'knx' AND first_seen_at >= <thời điểm bắt đầu crawl lần này>;
+WHERE registry_key = 'knx' AND status = 'active'
+  AND first_seen_at >= (
+    SELECT run_at FROM registry.crawl_log
+    WHERE registry_key = 'knx' AND status = 'ok'
+    ORDER BY run_at DESC LIMIT 1
+  );
 ```
 
 ## Definition of Done
 
-- [ ] Script chạy thủ công 1 lần, ghi đúng 1 row vào `registry.snapshots`
-- [ ] Device mới (giả lập bằng cách xóa 1 row rồi chạy lại) → xuất hiện lại với
+- [x] Script chạy thủ công 1 lần, ghi đúng 1 row vào `registry.snapshots` — test bằng
+      `import_and_diff.py` + dữ liệu CSA Matter thật, cùng logic áp dụng cho KNX
+- [x] Device mới (giả lập bằng cách xóa 1 row rồi chạy lại) → xuất hiện lại với
       `first_seen_at` = thời điểm chạy lại, không phải thời điểm gốc
-- [ ] Device bị gỡ khỏi site thật (không giả lập được dễ — test bằng cách tạm sửa 1
-      `external_id` trong DB thành giá trị không tồn tại, chạy lại, kiểm tra nó
-      chuyển `status = 'removed'`)
-- [ ] Giả lập crawl trả về 0 hoặc rất ít kết quả (mock response rỗng) → không mass-update
-      status, `crawl_log.status = 'aborted_anomaly'`
-- [ ] Chạy lại script 2 lần liên tiếp với cùng dữ liệu → không tạo duplicate, không đổi
-      `first_seen_at` của device cũ
+- [x] Device bị gỡ (test bằng CSV tuần 2 thiếu 1 external_id so với baseline) → chuyển đúng
+      `status = 'removed'`, không đụng tới các device khác
+- [x] Giả lập crawl trả về rất ít kết quả (49/4.949, ~1%) → tự động `aborted_anomaly`,
+      không mass-update status, `registry.devices` giữ nguyên
+- [x] Chạy lại với dữ liệu thay đổi (2 mới, 1 mất) → đúng `new_count`/`removed_count`, không
+      đổi `first_seen_at` của device cũ không thay đổi
+
+Còn lại trước khi coi A2 hoàn tất thật: chạy `crawl_knx_devices.py` full → `import_and_diff.py`
+với `registry_key=knx` trên Postgres 5433 thật (cần credential, câu hỏi #5 overview) — logic
+đã test kỹ bằng dữ liệu Matter, chỉ còn xác nhận chạy đúng trên dữ liệu KNX thật và Postgres
+thật, không phải Postgres tạm.

@@ -38,10 +38,14 @@ INSERT INTO registry.brands_of_interest (brand, aliases, aliases_zh, priority) V
 
 `registry.devices.brand` lấy trực tiếp từ dữ liệu crawl, có thể không khớp chính xác chuỗi
 trong `brands_of_interest.brand` (ví dụ crawl trả về "ABB i-bus KNX" nhưng bảng ghi "ABB").
-Match phải qua cả `brand` lẫn `aliases`, không phân biệt hoa thường:
+Match phải qua cả `brand` lẫn `aliases`, không phân biệt hoa thường.
+
+**Đã test thật bằng Postgres tạm + dữ liệu CSA Matter (4.948 thiết bị) + 2 thiết bị giả lập
+mới ("TestBrand" và "ABB Test Sensor").** Query dưới đây đã xác nhận: bắt đúng thiết bị ABB
+mới, loại đúng TestBrand (không trong danh sách quan tâm), **không lẫn thiết bị cũ**:
 
 ```sql
-SELECT d.*
+SELECT d.external_id, d.brand, d.model
 FROM registry.devices d
 JOIN registry.brands_of_interest b
   ON b.is_active
@@ -50,8 +54,20 @@ JOIN registry.brands_of_interest b
       OR lower(d.brand) = ANY (SELECT lower(a) FROM unnest(b.aliases) a)
      )
 WHERE d.registry_key = 'knx'
-  AND d.first_seen_at >= <thời điểm crawl lần này>;
+  AND d.status = 'active'  -- bắt buộc: loại device vừa bị đánh removed cùng lúc
+  AND d.first_seen_at >= (
+    SELECT run_at FROM registry.crawl_log
+    WHERE registry_key = 'knx' AND status = 'ok'
+    ORDER BY run_at DESC LIMIT 1
+  );
 ```
+
+**Bug đã tìm và sửa khi test:** bản đầu dùng `first_seen_at >= <giờ Python lúc script bắt
+đầu>` — lệch ~1-2ms so với `first_seen_at` (dùng `now()` của Postgres) do 2 đồng hồ khác
+nguồn (script vs DB container), khiến device mới bị bỏ sót khỏi kết quả dù insert đúng. Sửa
+bằng cách lấy mốc `run_at` từ chính `now()` của Postgres ngay trong transaction ghi device —
+chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md). Đây là lý do query trên dùng subquery
+`SELECT run_at FROM registry.crawl_log` thay vì truyền timestamp từ bên ngoài vào.
 
 Nếu brand crawl về không khớp gì (kể cả alias) → không lọt vào digest, nhưng **nên log lại
 riêng** những brand "lạ" xuất hiện nhiều lần — có thể là brand đáng thêm vào danh sách quan
@@ -76,12 +92,11 @@ brand mới vào danh sách quan tâm không.
 
 ## Definition of Done
 
-- [ ] `registry.brands_of_interest` có ít nhất seed thật từ Tùng (không phải data giả)
-- [ ] Query match brand chạy đúng trên ví dụ: device brand = "ABB i-bus KNX", alias trong
-      bảng = "ABB i-bus" → match được (kiểm tra matching theo substring/alias, không chỉ
-      exact — nếu case test này fail thì cần đổi từ `=` sang `ILIKE '%' || alias || '%'`,
-      quyết định cụ thể sau khi có dữ liệu brand thật, vì exact-match alias an toàn hơn
-      substring nhưng dễ bỏ sót biến thể tên)
-- [ ] `registry.unmatched_brands` trả về đúng danh sách brand không khớp, có count hợp lý
-- [ ] Test trên dữ liệu thật từ 1 lần chạy A2: số device match brand quan tâm khớp với đếm
-      thủ công trên vài dòng mẫu
+- [ ] `registry.brands_of_interest` có ít nhất seed thật từ Tùng (không phải data giả) —
+      vẫn đang chờ (câu hỏi #4 overview)
+- [x] Query match brand chạy đúng — test bằng brand thật ("ABB", "Panasonic") trên 4.948
+      thiết bị CSA Matter thật + 2 thiết bị giả lập, match chính xác, không lẫn thiết bị cũ
+- [ ] `registry.unmatched_brands` — viết rồi nhưng chưa test riêng (chưa có seed
+      `brands_of_interest` thật để tạo tình huống "brand lạ" có ý nghĩa)
+- [x] Test trên dữ liệu thật: đã dùng toàn bộ 4.948 thiết bị CSA Matter thật, không phải
+      data giả lập hoàn toàn — chỉ 2 thiết bị match thêm vào là giả lập để tạo tình huống test

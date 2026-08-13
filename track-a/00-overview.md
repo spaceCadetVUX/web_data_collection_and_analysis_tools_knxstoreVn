@@ -68,7 +68,7 @@ Track A. Chi tiết ở A2-knx-crawler.md.
 |---|---|---|
 | 1 | CSV 10.195 devices KNX hiện đang ở đâu? *(không còn bắt buộc — xem ghi chú dưới)* | A1 |
 | ~~2~~ | ~~URL/API nguồn KNX certified database~~ — **Đã trả lời:** `knx.org/devices`, chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md) | A2 |
-| 3 | URL/cấu trúc chính xác của CSA Matter certified DB — có phân trang, có anti-bot (Cloudflare) không? | A4 — ước tính 5-8h có thể lệch nhiều nếu cần xử lý anti-bot |
+| ~~3~~ | ~~URL/cấu trúc CSA Matter DB~~ — **Đã trả lời:** API JSON công khai (DCL), không phải scrape HTML, không anti-bot. Chi tiết ở [A4-matter-crawler.md](A4-matter-crawler.md). Ước tính có thể giảm xuống dưới 5-8h. | A4 |
 | 4 | Danh sách `brands_of_interest` ban đầu — Tùng cung cấp lúc nào? Alias tiếng Trung cần cho brand nào? | A3 |
 | 5 | Thông tin kết nối Postgres 5433 (host, credential) để chạy migration | A1 |
 | 6 | Ngưỡng "removed" khi crawl trả về ít device hơn lần trước — coi là thật hay coi là crawl lỗi? | A2 — quyết định sai có thể đánh dấu nhầm hàng loạt device đang active thành removed |

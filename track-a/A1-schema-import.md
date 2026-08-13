@@ -65,19 +65,20 @@ CREATE TABLE registry.crawl_log (
 CREATE INDEX ON registry.crawl_log (registry_key, run_at DESC);
 ```
 
-## Migration script
+## Migration script — đã viết và test thật
 
-Dùng convention file đánh số, chạy bằng `psql -f` hoặc tool migration đang có sẵn trong n8n
-stack (xác nhận với dev nếu team đã dùng Flyway/Sqitch/tự viết):
+[`migrations/0001_create_registry_schema.sql`](migrations/0001_create_registry_schema.sql) +
+[`0001_create_registry_schema.down.sql`](migrations/0001_create_registry_schema.down.sql).
 
+Đã test bằng Postgres 17 tạm (Docker, không phải Postgres thật của team): migration chạy
+sạch tạo đủ 4 bảng, rollback (`DROP SCHEMA ... CASCADE`) chạy sạch, xoá hết. Chưa test trên
+Postgres 5433 thật vì chưa có credential (câu hỏi #5 ở overview) — nhưng DDL đã xác nhận đúng
+cú pháp và logic, chỉ cần trỏ đúng connection string là chạy được.
+
+```bash
+psql "$DATABASE_URL" -f migrations/0001_create_registry_schema.sql       # apply
+psql "$DATABASE_URL" -f migrations/0001_create_registry_schema.down.sql  # rollback
 ```
-migrations/
-  0001_create_registry_schema.sql   -- toàn bộ DDL ở trên
-  0001_create_registry_schema.down.sql  -- DROP SCHEMA registry CASCADE
-```
-
-**Rollback bắt buộc có** — theo đúng tiêu chuẩn DoD của B0 bên Track B (§10), áp dụng nhất
-quán cho Track A.
 
 ## Import CSV — CSV cũ không còn cần thiết, dùng output của crawler A2 thay thế
 
