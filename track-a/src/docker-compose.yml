@@ -1,0 +1,26 @@
+# Postgres chạy thật cho Track A (không phải container tạm dùng để test).
+# Dùng pgvector/pgvector:pg17 để khớp đúng image đã ghi trong docs/plan.md §2.1 — dù
+# Track A chưa cần pgvector, Track B sau này cần cho embedding (docs/plan.md §5.3).
+#
+# Đây là môi trường dev cục bộ, chạy trên máy đang code — không phải Postgres 5433 dùng
+# chung với blog/sản phẩm (nếu có) trên Mac Mini. Khi chuyển lên Mac Mini thật, chỉ cần
+# đổi POSTGRES_HOST trong .env, dữ liệu/schema/migration không đổi gì.
+#
+# Chạy: docker compose up -d   (từ thư mục này, cần file .env cùng cấp — xem .env.example)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: registry-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - registry_pgdata:/var/lib/postgresql/data
+
+volumes:
+  registry_pgdata:

@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .DS_Store
 track-a/src/crawl_full.log
+track-a/src/.env

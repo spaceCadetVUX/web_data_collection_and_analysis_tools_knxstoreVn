@@ -13,15 +13,28 @@ hơn ước tính ban đầu nhờ CSA Matter có API JSON (không cần scrape)
 
 | # | Việc | Trạng thái |
 |---|---|---|
-| A1 | Schema `registry` + migration | ✅ Code + test xong (Postgres tạm). Chờ credential thật |
-| A2 | Crawler KNX + UPSERT/diff | ✅ Code + test xong. Baseline thật đã crawl (`data/knx_devices_baseline.csv`, 10.167 dòng) |
-| A3 | `brands_of_interest` + diff logic | ✅ Logic test xong. ✅ Seed thật đã nhận + soạn SQL (`migrations/0002_seed_brands_of_interest.sql`), 11 brand đã verify alias bằng dữ liệu crawl thật. Vài entry chờ Tùng xác nhận thêm |
-| A4 | Crawler CSA Matter | ✅ Code + test xong. Baseline thật đã crawl (`data/matter_devices_baseline.csv`, 4.948 dòng) |
-| A5 | n8n workflow + Zalo | ❌ Chưa làm — cần n8n thật + xác nhận kênh gửi |
+| A1 | Schema `registry` + migration | ✅ Chạy thật trên Postgres dev cục bộ (`src/docker-compose.yml`), không còn chỉ là test |
+| A2 | Crawler KNX + UPSERT/diff | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 10.167 thiết bị đang nằm trong `registry.devices` |
+| A3 | `brands_of_interest` + diff logic | ✅ 73 brand thật đã seed vào Postgres dev, 12 brand có alias verify bằng dữ liệu crawl thật. Query match thật cho ra 34 nhóm brand/registry khớp. Vài entry chờ Tùng xác nhận thêm |
+| A4 | Crawler CSA Matter | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 4.948 thiết bị đang nằm trong `registry.devices` |
+| A5 | n8n workflow + Zalo | ❌ Chưa làm — **việc duy nhất còn lại thật sự chặn Track A** — cần n8n thật + xác nhận kênh gửi |
 
-**Việc còn chặn:** credential Postgres 5433 thật (#5 mục 4), danh sách `brands_of_interest`
-thật (#4 mục 4). Không có 2 cái này thì không chạy được trên hệ thống thật, dù toàn bộ code/
-logic đã viết và test kỹ bằng Postgres + dữ liệu thật (không phải giả lập suông).
+**Cập nhật (2026-08-13): đã dựng Postgres dev cục bộ chạy thật** (không phải container tạm
+xoá sau test) — `track-a/src/docker-compose.yml`, image `pgvector/pgvector:pg17` khớp
+`docs/plan.md` §2.1. Đã apply migration 0001+0002, import baseline KNX (10.167) + Matter
+(4.948) thật vào — không còn là "chỉ test", đây là dữ liệu sống, persistent qua Docker volume.
+
+Query match brand thật cho kết quả: **34 nhóm brand/registry khớp**, tổng hàng nghìn thiết bị
+(MDT technologies: 1.037, ABB 3 chi nhánh: 1.365, Elsner: 266, Aqara: 118...). Đây là dữ liệu
+thật sẽ vào digest khi A5 xong.
+
+Credential nằm trong `track-a/src/.env` (không commit — xem `.env.example` để biết cấu trúc).
+**Đây là Postgres dev, chạy trên máy đang code — chưa phải Postgres 5433 thật trên Mac Mini.**
+Khi chuyển lên Mac Mini, chỉ cần export lại data + trỏ `.env` sang host mới, schema/code không
+đổi gì.
+
+**Việc còn chặn thật sự:** n8n workflow (A5, 0% — cần quyền n8n thật + xác nhận kênh Zalo).
+Postgres không còn chặn gì ở mức dev/test nữa.
 
 ---
 
@@ -37,17 +50,22 @@ track-a/
 ├── A5-n8n-workflow.md         n8n workflow + gửi Zalo
 ├── migrations/
 │   ├── 0001_create_registry_schema.sql
-│   └── 0001_create_registry_schema.down.sql
+│   ├── 0001_create_registry_schema.down.sql
+│   └── 0002_seed_brands_of_interest.sql
 ├── src/                       Toàn bộ code — Python + Docker
 │   ├── crawl_knx_devices.py
 │   ├── crawl_matter_devices.py
 │   ├── import_and_diff.py     UPSERT + anomaly check + crawl_log (dùng chung KNX/Matter)
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── docker-compose.snippet.yml
-└── data/                      CSV baseline thật đã crawl (không phải file mẫu)
+│   ├── Dockerfile                     đóng gói crawler
+│   ├── docker-compose.snippet.yml     snippet để dev ghép vào compose thật của n8n stack
+│   ├── docker-compose.yml             Postgres DEV chạy thật (không commit .env)
+│   └── .env.example                   mẫu credential — copy thành .env, điền thật
+└── data/                      CSV baseline thật đã crawl + reference data KNXStore
     ├── knx_devices_baseline.csv       (10.167 dòng)
-    └── matter_devices_baseline.csv    (4.948 dòng)
+    ├── matter_devices_baseline.csv    (4.948 dòng)
+    ├── knxstore-brands-raw.txt        (75 brand KNXStore cung cấp)
+    └── knxstore-categories.csv        (90 category KNXStore)
 ```
 
 ## 2. Trình tự build và phụ thuộc
@@ -122,7 +140,7 @@ quyết định có cần không trước khi mở rộng scope.
 | ~~2~~ | ~~URL/API nguồn KNX certified database~~ — **Đã trả lời:** `knx.org/devices`, chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md) | A2 |
 | ~~3~~ | ~~URL/cấu trúc CSA Matter DB~~ — **Đã trả lời:** API JSON công khai (DCL), không phải scrape HTML, không anti-bot. Chi tiết ở [A4-matter-crawler.md](A4-matter-crawler.md) | A4 |
 | 4 | Danh sách `brands_of_interest` ban đầu | **Đã nhận, chốt 75 brand** (không phải 80 như nhãn ban đầu) + 90 category, xem `data/knxstore-brands-raw.txt`, `data/knxstore-categories.csv`. Seed SQL đã viết + test: [`migrations/0002_seed_brands_of_interest.sql`](migrations/0002_seed_brands_of_interest.sql). `Kanonbus` đã xác nhận là brand thật. Còn `RESI`, `Systemline E50`, `OEM`, `Maximum Security` chưa xác nhận — không chặn gì, chỉ chưa có alias. Alias tiếng Trung: chưa cần (danh sách hiện tại chưa có brand CN rõ ràng) |
-| 5 | Thông tin kết nối Postgres 5433 (host, credential) để chạy migration | A1 — **để sau theo yêu cầu, không chặn phần chuẩn bị khác** |
+| ~~5~~ | ~~Thông tin kết nối Postgres 5433 thật~~ — **tạm thời không cần:** đã dựng Postgres dev cục bộ (`src/docker-compose.yml`), đủ để chạy toàn bộ Track A. Khi có Postgres 5433 thật trên Mac Mini, chỉ cần export data + đổi `.env`, không phải làm lại gì | A1 |
 | ~~6~~ | ~~Ngưỡng "removed" khi crawl trả về ít device hơn lần trước~~ — **Đã code + test:** mặc định 0.8 (abort nếu giảm hơn 20% so với avg lịch sử), tham số `--anomaly-threshold` chỉnh được, xem [A2-knx-crawler.md](A2-knx-crawler.md) | A2 |
 
 Chỉ còn mục 4 và 5 thật sự chặn đường — cả hai đều là quyết định/thông tin của Tùng, không
