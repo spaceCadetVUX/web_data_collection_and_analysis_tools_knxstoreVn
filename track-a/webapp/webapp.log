@@ -1,33 +1,11 @@
-INFO:     Started server process [38085]
+INFO:     Started server process [40851]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8800 (Press CTRL+C to quit)
-INFO:     127.0.0.1:57563 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57576 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57576 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:57583 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57583 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:57585 - "GET /settings HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57591 - "GET /logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57591 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57627 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57630 - "GET /settings HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57736 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57813 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57816 - "GET /logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57954 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57994 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58016 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58016 - "POST /trigger HTTP/1.1" 303 See Other
-INFO:     127.0.0.1:58016 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58018 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58026 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58030 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58034 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58038 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58042 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58048 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58053 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58057 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58061 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58064 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58100 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58103 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58105 - "POST /trigger HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58105 - "POST /stop HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK

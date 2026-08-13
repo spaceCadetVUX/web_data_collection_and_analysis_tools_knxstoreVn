@@ -3,12 +3,19 @@
 <h1>Track A — Registry Diff</h1>
 
 <div class="card">
-  <form method="post" action="/trigger" class="row" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
-    <button type="submit" {% if pipeline_state.running %}disabled{% endif %}>
-      {% if pipeline_state.running %}⏳ Đang chạy...{% else %}▶ Trigger now{% endif %}
-    </button>
+  <div class="row">
+    <form method="post" action="/trigger" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
+      <button type="submit" {% if pipeline_state.running %}disabled{% endif %}>
+        {% if pipeline_state.running %}⏳ Đang chạy...{% else %}▶ Trigger now{% endif %}
+      </button>
+    </form>
+    {% if pipeline_state.running %}
+    <form method="post" action="/stop" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Đang dừng...';">
+      <button type="submit" class="secondary">⏹ Dừng</button>
+    </form>
+    {% endif %}
     <span class="muted">crawl KNX + Matter → import → diff → gửi Zalo (~15-20 phút)</span>
-  </form>
+  </div>
 
   {% if pipeline_state.running %}
     <p class="muted">Bắt đầu lúc {{ pipeline_state.started_at }} — trang tự refresh mỗi 10s.</p>

@@ -26,17 +26,22 @@ def _start_scheduler():
 # trigger đè lên nhau (crawl full mất ~15-20 phút, dễ bấm nhầm 2 lần).
 _pipeline_state = {"running": False, "started_at": None, "result": None, "error": None}
 _pipeline_lock = threading.Lock()
+_stop_event = threading.Event()
+_process_registry = {"proc": None}
 
 
 def _run_pipeline_background(trigger_type: str):
     try:
-        result = run_full_pipeline(trigger_type=trigger_type)
+        result = run_full_pipeline(
+            trigger_type=trigger_type, stop_event=_stop_event, process_registry=_process_registry
+        )
         _pipeline_state["result"] = result
         _pipeline_state["error"] = None
     except Exception as exc:  # noqa: BLE001 — ghi lại lỗi để dashboard hiển thị, không để mất tích âm thầm
         _pipeline_state["error"] = str(exc)
     finally:
         _pipeline_state["running"] = False
+        _process_registry["proc"] = None
 
 
 @app.get("/")
@@ -80,9 +85,21 @@ def trigger():
         _pipeline_state["started_at"] = datetime.now().isoformat()
         _pipeline_state["result"] = None
         _pipeline_state["error"] = None
+        _stop_event.clear()
 
     thread = threading.Thread(target=_run_pipeline_background, args=("manual",), daemon=True)
     thread.start()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/stop")
+def stop():
+    """Ngắt pipeline đang chạy — set cờ dừng + kill process con hiện tại (nếu đang crawl)
+    để không phải chờ hết bước hiện tại mới dừng."""
+    _stop_event.set()
+    proc = _process_registry.get("proc")
+    if proc is not None and proc.poll() is None:
+        proc.terminate()
     return RedirectResponse("/", status_code=303)
 
 
