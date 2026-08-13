@@ -1,0 +1,91 @@
+name,slug
+Đèn thông minh Matter,den-thong-minh-matter
+Nguồn An Ninh Satel,nguon-an-ninh-satel
+Led SPI,led-spi
+Gateway Matter,gateway-matter
+Bộ điều khiển LED Matter,driver-matter
+Điều khiển điều hoà máy lạnh,dieu-khien-dan-lanh
+Hub trung tâm,hub-trung-tam
+Chuông hình,chuong-hinh
+Khóa thông minh Matter,khoa-thong-minh-matter
+Công tắc Matter,cong-tac-matter
+Bộ điều khiển trung tâm Homey,hub-trung-tam-homey
+Ổ cắm thông minh Matter,o-cam-thong-minh-matter
+Cảm biến thông minh Matter,cam-bien-matter
+Động cơ rèm Matter,dong-co-rem-matter
+Điều khiển Matter,san-pham-matter
+Camera thông minh,camera-thong-minh
+Đèn thông minh Philips Hue,den-thong-minh-philips-hue
+Khóa cửa thông minh,khoa-cua-thong-minh
+Phụ kiện an ninh,phu-kien-an-ninh
+Cảm biến chống trộm,cam-bien-chong-trom
+Cảm biến cửa từ,cam-bien-tu-cam-bien-cua
+Đầu báo khói,dau-bao-khoi
+Thiết bị báo cháy,thiet-bi-bao-chay
+Bộ khuếch đại đèn LED,bo-khuech-dai-den-led
+Combo sản phẩm Casambi,combo-san-pham-casambi
+Bộ nguồn Casambi,bo-nguon-casambi
+Ổ cắm,o-cam
+Thiết bị điện,thiet-bi-dien
+Loa,loa
+Âm li,am-li
+Âm thanh đa vùng,am-thanh-da-vung
+Phụ kiện,phu-kien
+Đèn thông minh Casambi,den-thong-minh-casambi
+Đèn chiếu sáng,den-chieu-sang
+Bộ nguồn DMX,bo-nguon-dmx
+Bộ nguồn Triac,bo-nguon-triac
+Cảm biến chất lượng không khí,cam-bien-chat-luong-khong-khi
+Điều khiển máy lạnh FCU,dieu-khien-may-lanh-fcu
+Dịch vụ,dich-vu
+Còi báo động chống trộm,coi-bao-dong
+Bàn phím điều khiển an ninh,ban-phim-dieu-khien-an-ninh
+Màn hình điều khiển an ninh,man-hinh-dieu-khien-an-ninh
+Bảng điều khiển trung tâm,bang-dieu-khien-trung-tam
+Dây cáp điều khiển,day-cap-dieu-khien
+Tủ an ninh,tu-an-ninh
+Remote radio,remote-radio
+Bộ điều khiển DMX,bo-dieu-khien-dmx
+Bộ điều khiển HomeKit,bo-dieu-khien-homekit
+Bộ điều khiển rèm cửa tự động,dieu-khien-rem-cua-tu-dong
+Cảm biến an ninh an toàn,cam-bien-an-ninh
+Bộ chuyển đổi tín hiệu,thiet-bi-he-thong
+Bộ điều khiển trung tâm,bo-dieu-khien-trung-tam
+Remote điều khiển từ xa,remote-dieu-khien
+Nút nhấn Dry contact,nut-nhan-dry-contact
+Công tắc DALI,cong-tac-dali
+Công tắc thông minh,cong-tac-thong-minh
+Điều khiển chiếu sáng,dieu-khien-chieu-sang
+Thiết bị mở rộng an ninh,module-mo-rong
+Thiết bị an ninh báo động,kiem-soat-ra-vao
+Điều khiển máy lạnh,dieu-khien-may-lanh
+Hàng thanh lý,hang-thanh-ly
+Bộ điều khiển KNX,bo-dieu-khien-knx-gateway
+Điều khiển ON/OFF,dieu-khien-chieu-sang-on-off
+Công tắc cơ,cong-tac-co
+Điều khiển máy lạnh VRV/VRF,dieu-khien-may-lanh-trung-tam-vrv-vrf
+Điều khiển cấp gió tươi,dieu-khien-cap-gio-tuoi
+Cảm biến KNX,cam-bien-hien-dien-knx
+Điều khiển máy lạnh cục bộ,dieu-khien-may-lanh-cuc-bo
+Bộ điều khiển nguồn,thiet-bi-he-thong-knx-bo-nguon
+Thiết bị mở rộng,thiet-bi-he-thong-knx-bo-mo-rong
+Cảm biến Casambi,casambi-cam-bien
+Công tắc Casambi,casambi-cong-tac
+Bộ nguồn Dali,dali-bo-cap-nguon
+Bộ điều khiển DALI,dali-gateway
+Cảm biến hiện diện,cam-bien-hien-dien
+Cảm biến On/Off độc lập,cam-bien-on-off
+Cảm biến DALI,cam-bien-dim-dali
+Cảm biến 0-10V,cam-bien-dim-0-10v
+Dimmer DMX,dmx
+Dimmer Triac,dimmer-doc-lap-triac
+Dimmer DALI,dimmer-doc-lap-dali
+Điều khiển 0-10V,dimmer-doc-lap-0-10v
+Màn hình điều khiển hệ thống,man-hinh-cam-ung
+Bảng điều khiển điều hòa,bang-dieu-khien-thermostat
+Công tắc Moorgen,cong-tac-moorgen
+Công tắc KNX,cong-tac-knx
+Dịch Vụ Casambi - 4C,dich-vu-casambi-4c
+Combo sản phẩm,combo-san-pham-1
+Bộ nguồn đèn LED,led-driver-1
+Điều khiển Casambi,casambi-gateway

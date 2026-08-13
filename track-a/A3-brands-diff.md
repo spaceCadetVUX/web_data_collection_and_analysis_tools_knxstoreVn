@@ -21,18 +21,23 @@ CREATE TABLE registry.brands_of_interest (
 );
 ```
 
-**Seed data chưa có — cần Tùng cung cấp trước khi test được logic diff thật** (câu hỏi #4
-ở overview). Không tự đoán danh sách hãng, vì đây là quyết định kinh doanh (hãng nào KNXStore
-đang phân phối/quan tâm), không phải quyết định kỹ thuật.
+**Đã nhận seed thật từ Tùng (75 brand + 90 category KNXStore đang bán)** — xem
+[`../data/knxstore-brands-raw.txt`](../data/knxstore-brands-raw.txt),
+[`../data/knxstore-categories.csv`](../data/knxstore-categories.csv). Seed SQL đã viết + test
+thật ở [`../migrations/0002_seed_brands_of_interest.sql`](../migrations/0002_seed_brands_of_interest.sql) —
+73/75 brand insert được (2 loại trừ vì không phải tên hãng: "Khác", "Casambi Enocean Switch"),
+11 brand đã có alias **verify bằng grep trực tiếp trên dữ liệu KNX/Matter thật đã crawl**
+(không suy đoán) — ví dụ `HUGO MULLER` → `Hugo Müller GmbH & Co KG`, `ABB` → 4 biến thể chi
+nhánh thật (Busch-Jaeger, Stotz-Kontakt, SACE, Xiamen).
 
-Ví dụ cấu trúc để Tùng điền (không phải seed thật):
+Vài entry cần Tùng xác nhận thêm trước khi tin (ghi rõ trong file seed): `Kanonbus` (nghi là
+dòng sản phẩm của hãng "Kanontec", không phải tên hãng riêng), `RESI` (gần giống "Resideo"
+nhưng chưa chắc cùng công ty), `Systemline E50` (nghi là dòng sản phẩm của `Trivum`), `OEM`,
+`Maximum Security` (tên chung chung, không rõ có phải 1 hãng cụ thể).
 
-```sql
-INSERT INTO registry.brands_of_interest (brand, aliases, aliases_zh, priority) VALUES
-  ('ABB', ARRAY['ABB i-bus', 'Busch-Jaeger'], NULL, 1),
-  ('JUNG', ARRAY['Jung'], NULL, 1),
-  ('GVS', ARRAY['GVS Smart Home'], ARRAY['视声'], 2);
-```
+**Alias tiếng Trung: chưa cần** — danh sách 75 brand hiện tại của KNXStore chưa có brand nào
+gốc Trung Quốc rõ ràng (Moorgen, GVS là brand TQ nhưng team đặt tên bằng tên quốc tế, không
+cần alias_zh riêng ở thời điểm này).
 
 ## Vấn đề matching brand — không match exact string
 

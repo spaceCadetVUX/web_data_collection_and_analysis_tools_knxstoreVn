@@ -15,7 +15,7 @@ hơn ước tính ban đầu nhờ CSA Matter có API JSON (không cần scrape)
 |---|---|---|
 | A1 | Schema `registry` + migration | ✅ Code + test xong (Postgres tạm). Chờ credential thật |
 | A2 | Crawler KNX + UPSERT/diff | ✅ Code + test xong. Baseline thật đã crawl (`data/knx_devices_baseline.csv`, 10.167 dòng) |
-| A3 | `brands_of_interest` + diff logic | ✅ Logic test xong bằng dữ liệu thật. ❌ Chờ seed thật từ Tùng |
+| A3 | `brands_of_interest` + diff logic | ✅ Logic test xong. ✅ Seed thật đã nhận + soạn SQL (`migrations/0002_seed_brands_of_interest.sql`), 11 brand đã verify alias bằng dữ liệu crawl thật. Vài entry chờ Tùng xác nhận thêm |
 | A4 | Crawler CSA Matter | ✅ Code + test xong. Baseline thật đã crawl (`data/matter_devices_baseline.csv`, 4.948 dòng) |
 | A5 | n8n workflow + Zalo | ❌ Chưa làm — cần n8n thật + xác nhận kênh gửi |
 
@@ -107,6 +107,13 @@ Track A. Chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md).
 - **Bug lệch đồng hồ script/Postgres đã tìm và sửa** trong `import_and_diff.py` — xem
   [A2-knx-crawler.md](A2-knx-crawler.md) mục "Đã viết và test thật".
 
+**Phát hiện mới: `docs/plan.md` §2.3 nhắc "DALI Alliance product DB" là 1 trong 3 registry của
+Track A, nhưng bảng task §10 chưa từng có task crawl DALI nào (chỉ A2=KNX, A4=Matter).** Lộ ra
+khi đối chiếu brand list thật của KNXStore với dữ liệu đã crawl: 30/75 brand không tìm thấy,
+phần lớn thuộc hệ sinh thái Casambi/DALI (Casambi, Trivum, Philips Hue, Carus, IR-TEC...) —
+đúng như dự đoán nếu chưa crawl nguồn đó. Chưa thêm task DALI vào Track A ở đây — để Tùng
+quyết định có cần không trước khi mở rộng scope.
+
 ## 5. Việc cần xác nhận trước khi code (chưa có câu trả lời trong plan gốc)
 
 | # | Câu hỏi | Ảnh hưởng |
@@ -114,8 +121,8 @@ Track A. Chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md).
 | 1 | CSV 10.195 devices KNX hiện đang ở đâu? *(không còn bắt buộc — đã có baseline crawl thật ở `data/knx_devices_baseline.csv`)* | A1 |
 | ~~2~~ | ~~URL/API nguồn KNX certified database~~ — **Đã trả lời:** `knx.org/devices`, chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md) | A2 |
 | ~~3~~ | ~~URL/cấu trúc CSA Matter DB~~ — **Đã trả lời:** API JSON công khai (DCL), không phải scrape HTML, không anti-bot. Chi tiết ở [A4-matter-crawler.md](A4-matter-crawler.md) | A4 |
-| 4 | Danh sách `brands_of_interest` ban đầu — Tùng cung cấp lúc nào? Alias tiếng Trung cần cho brand nào? | A3 — **vẫn đang chặn** |
-| 5 | Thông tin kết nối Postgres 5433 (host, credential) để chạy migration | A1 — **vẫn đang chặn** |
+| 4 | Danh sách `brands_of_interest` ban đầu | **Đã nhận** (75 brand + 90 category, xem `data/knxstore-brands-raw.txt`, `data/knxstore-categories.csv`). Seed SQL đã viết + test: [`migrations/0002_seed_brands_of_interest.sql`](migrations/0002_seed_brands_of_interest.sql). Còn vài entry cần Tùng xác nhận (Kanonbus, RESI, Systemline E50, OEM, Maximum Security) — xem comment trong file seed. Alias tiếng Trung: chưa có brand nào cần (danh sách hiện tại chưa có brand CN) |
+| 5 | Thông tin kết nối Postgres 5433 (host, credential) để chạy migration | A1 — **để sau theo yêu cầu, không chặn phần chuẩn bị khác** |
 | ~~6~~ | ~~Ngưỡng "removed" khi crawl trả về ít device hơn lần trước~~ — **Đã code + test:** mặc định 0.8 (abort nếu giảm hơn 20% so với avg lịch sử), tham số `--anomaly-threshold` chỉnh được, xem [A2-knx-crawler.md](A2-knx-crawler.md) | A2 |
 
 Chỉ còn mục 4 và 5 thật sự chặn đường — cả hai đều là quyết định/thông tin của Tùng, không
