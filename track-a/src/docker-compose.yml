@@ -22,5 +22,22 @@ services:
     volumes:
       - registry_pgdata:/var/lib/postgresql/data
 
+  # n8n DEV — chỉ để thiết kế + test workflow A5, xuất JSON để import vào n8n thật trên
+  # máy host sau. KHÔNG phải n8n production (không có Zalo credential thật, không chạy
+  # crawler thật qua Docker-in-Docker ở đây — xem A5-n8n-workflow.md phần giới hạn).
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-dev
+    restart: "no"
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - n8n_dev_data:/home/node/.n8n
+    depends_on:
+      - postgres
+
 volumes:
   registry_pgdata:
+  n8n_dev_data:

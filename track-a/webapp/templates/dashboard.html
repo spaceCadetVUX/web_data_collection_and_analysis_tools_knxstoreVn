@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Track A — Registry Diff</h1>
+
+<div class="card">
+  <form method="post" action="/trigger" class="row">
+    <button type="submit" {% if pipeline_state.running %}disabled{% endif %}>
+      {% if pipeline_state.running %}⏳ Đang chạy...{% else %}▶ Trigger now{% endif %}
+    </button>
+    <span class="muted">crawl KNX + Matter → import → diff → gửi Zalo (~15-20 phút)</span>
+  </form>
+
+  {% if pipeline_state.running %}
+    <p class="muted">Bắt đầu lúc {{ pipeline_state.started_at }} — trang tự refresh mỗi 10s.</p>
+    <script>setTimeout(() => location.reload(), 10000);</script>
+  {% elif pipeline_state.error %}
+    <p><span class="badge failed">lỗi</span> {{ pipeline_state.error }}</p>
+  {% elif pipeline_state.result %}
+    <p class="muted">
+      Lần chạy tay gần nhất: {{ pipeline_state.result.device_count }} thiết bị,
+      <span class="badge {{ pipeline_state.result.send_status }}">{{ pipeline_state.result.send_status }}</span>,
+      {{ (pipeline_state.result.duration_ms / 1000) | round(1) }}s
+    </p>
+  {% endif %}
+</div>
+
+<h2>Crawl gần nhất</h2>
+<div class="card">
+  <table>
+    <tr><th>Registry</th><th>Chạy lúc</th><th>Item</th><th>Mới</th><th>Gỡ</th><th>Status</th></tr>
+    {% for r in crawl_rows %}
+    <tr>
+      <td>{{ r.registry_key }}</td>
+      <td>{{ r.run_at }}</td>
+      <td>{{ r.item_count }}</td>
+      <td>{{ r.new_count }}</td>
+      <td>{{ r.removed_count }}</td>
+      <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Digest gần nhất</h2>
+<div class="card">
+  {% if last_digest %}
+  <p>
+    {{ last_digest.run_at }} — {{ last_digest.trigger_type }} —
+    {{ last_digest.device_count }} thiết bị —
+    <span class="badge {{ last_digest.send_status }}">{{ last_digest.send_status }}</span>
+    {% if last_digest.error %}<span class="muted">({{ last_digest.error }})</span>{% endif %}
+  </p>
+  {% if last_digest.message %}
+  <pre style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-size: 0.85rem; white-space: pre-wrap; margin-top: 0.75rem">{{ last_digest.message }}</pre>
+  {% endif %}
+  {% else %}
+  <p class="muted">Chưa có lần gửi nào.</p>
+  {% endif %}
+</div>
+{% endblock %}

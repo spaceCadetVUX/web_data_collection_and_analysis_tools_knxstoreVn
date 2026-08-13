@@ -17,7 +17,7 @@ hơn ước tính ban đầu nhờ CSA Matter có API JSON (không cần scrape)
 | A2 | Crawler KNX + UPSERT/diff | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 10.167 thiết bị đang nằm trong `registry.devices` |
 | A3 | `brands_of_interest` + diff logic | ✅ 73 brand thật đã seed vào Postgres dev, 12 brand có alias verify bằng dữ liệu crawl thật. Query match thật cho ra 34 nhóm brand/registry khớp. Vài entry chờ Tùng xác nhận thêm |
 | A4 | Crawler CSA Matter | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 4.948 thiết bị đang nằm trong `registry.devices` |
-| A5 | n8n workflow + Zalo | ❌ Chưa làm — **việc duy nhất còn lại thật sự chặn Track A** — cần n8n thật + xác nhận kênh gửi |
+| A5 | n8n workflow + Zalo | 🟡 Đang làm — query diff + format message xong trong n8n-dev, **thiếu node gửi Zalo thật** + check crawl fail/anomaly. Xem "Việc chưa giải quyết" trong [A5-n8n-workflow.md](A5-n8n-workflow.md) |
 
 **Cập nhật (2026-08-13): đã dựng Postgres dev cục bộ chạy thật** (không phải container tạm
 xoá sau test) — `track-a/src/docker-compose.yml`, image `pgvector/pgvector:pg17` khớp
@@ -33,8 +33,11 @@ Credential nằm trong `track-a/src/.env` (không commit — xem `.env.example` 
 Khi chuyển lên Mac Mini, chỉ cần export lại data + trỏ `.env` sang host mới, schema/code không
 đổi gì.
 
-**Việc còn chặn thật sự:** n8n workflow (A5, 0% — cần quyền n8n thật + xác nhận kênh Zalo).
-Postgres không còn chặn gì ở mức dev/test nữa.
+**Việc còn chặn thật sự (2026-08-13):** node gửi Zalo KHub thật trong A5 — n8n-dev không có
+credential KHub (chỉ có ở n8n production `n8n.tungvu.vn`, xem chi tiết trong
+[A5-n8n-workflow.md](A5-n8n-workflow.md) mục "Việc chưa giải quyết"). Ngoài ra `launchd` chạy
+crawler tự động đang bị macOS TCC chặn, cần tự cấp Full Disk Access cho `/bin/bash` — chạy tay
+vẫn hoạt động bình thường. Postgres không còn chặn gì ở mức dev/test nữa.
 
 ---
 

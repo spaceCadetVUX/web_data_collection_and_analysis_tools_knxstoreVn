@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Logs</h1>
+
+<h2>Crawl log</h2>
+<div class="card">
+  <table>
+    <tr><th>Registry</th><th>Chạy lúc</th><th>Item</th><th>Mới</th><th>Gỡ</th><th>Status</th><th>Error</th></tr>
+    {% for r in crawl_logs %}
+    <tr>
+      <td>{{ r.registry_key }}</td>
+      <td>{{ r.run_at }}</td>
+      <td>{{ r.item_count }}</td>
+      <td>{{ r.new_count }}</td>
+      <td>{{ r.removed_count }}</td>
+      <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+      <td class="muted">{{ r.error or "" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Digest log</h2>
+<div class="card">
+  <table>
+    <tr><th>Chạy lúc</th><th>Loại</th><th>Số thiết bị</th><th>Status</th><th>Duration</th><th></th></tr>
+    {% for r in digest_logs %}
+    <tr>
+      <td>{{ r.run_at }}</td>
+      <td>{{ r.trigger_type }}</td>
+      <td>{{ r.device_count }}</td>
+      <td><span class="badge {{ r.send_status }}">{{ r.send_status }}</span></td>
+      <td>{{ r.duration_ms }}ms</td>
+      <td>
+        {% if r.message %}
+        <details>
+          <summary style="cursor: pointer; color: var(--accent); font-size: 0.85rem">Xem nội dung</summary>
+          <pre style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; font-size: 0.82rem; white-space: pre-wrap; max-width: 500px">{{ r.message }}</pre>
+        </details>
+        {% endif %}
+        {% if r.error %}<span class="muted">{{ r.error }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

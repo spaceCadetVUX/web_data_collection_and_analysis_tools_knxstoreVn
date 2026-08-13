@@ -4,3 +4,5 @@ __pycache__/
 .DS_Store
 track-a/src/crawl_full.log
 track-a/src/.env
+track-a/src/logs/
+track-a/data/_weekly_*.csv

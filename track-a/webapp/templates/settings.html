@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Settings</h1>
+
+<h2>Lịch weekly</h2>
+<div class="card">
+  <form method="post" action="/settings/schedule" class="row">
+    <select name="weekday">
+      {% for label in weekday_labels %}
+      <option value="{{ loop.index0 }}" {% if settings.schedule_weekday == loop.index0 %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input type="number" name="hour" min="0" max="23" value="{{ settings.schedule_hour }}" style="width: 4rem">
+    <span class="muted">giờ</span>
+    <input type="number" name="minute" min="0" max="59" value="{{ settings.schedule_minute }}" style="width: 4rem">
+    <span class="muted">phút (giờ VN)</span>
+    <button type="submit">Lưu lịch</button>
+  </form>
+  <p class="muted" style="margin-top: 0.75rem">Lịch chỉ chạy khi webapp đang mở/chạy nền — không phải cron OS-level.</p>
+</div>
+
+<h2>Brands quan tâm ({{ brands | length }})</h2>
+<div class="card">
+  <table>
+    <tr><th>Brand</th><th>Aliases</th><th>Active</th><th></th></tr>
+    {% for b in brands %}
+    <tr>
+      <td>{{ b.brand }}</td>
+      <td class="muted">{{ (b.aliases or []) | join(", ") }}</td>
+      <td><span class="badge {{ 'active' if b.is_active else 'failed' }}">{{ "bật" if b.is_active else "tắt" }}</span></td>
+      <td>
+        <form method="post" action="/settings/brands/{{ b.id }}/toggle">
+          <button type="submit" class="secondary">{{ "Tắt" if b.is_active else "Bật" }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h3>Thêm brand mới</h3>
+  <form method="post" action="/settings/brands/add" class="row">
+    <input type="text" name="brand" placeholder="Tên brand" required>
+    <input type="text" name="aliases" placeholder="Alias, phân cách bằng dấu phẩy" style="width: 18rem">
+    <button type="submit">Thêm</button>
+  </form>
+</div>
+{% endblock %}
