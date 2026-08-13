@@ -1,6 +1,6 @@
 # A1 — Schema `registry` + import CSV KNX
 
-Ước tính: 3-4h · Phụ thuộc: không · Xem [00-overview.md](00-overview.md) cho bối cảnh.
+Ước tính: 3-4h · Phụ thuộc: không · Xem [README.md](README.md) cho bối cảnh.
 
 ## Mục tiêu
 
@@ -39,7 +39,7 @@ CREATE INDEX ON registry.devices (brand);
 CREATE INDEX ON registry.devices (first_seen_at DESC);
 ```
 
-**Thêm mới so với §4.3** (lý do ở [00-overview.md](00-overview.md) mục 2):
+**Thêm mới so với §4.3** (lý do ở [README.md](README.md) mục 2):
 
 ```sql
 CREATE TABLE registry.brands_of_interest (
@@ -84,7 +84,7 @@ psql "$DATABASE_URL" -f migrations/0001_create_registry_schema.down.sql  # rollb
 
 Không tìm được CSV cũ (và kể cả tìm được, `cert_date` trong đó không đáng tin — xem đính
 chính ở [A2-knx-crawler.md](A2-knx-crawler.md): `knx.org/devices` không hiển thị ngày chứng
-nhận ở bất kỳ đâu). Thay vào đó: chạy [`scripts/crawl_knx_devices.py`](scripts/crawl_knx_devices.py)
+nhận ở bất kỳ đâu). Thay vào đó: chạy [`src/crawl_knx_devices.py`](src/crawl_knx_devices.py)
 (đã viết và test) để tự tạo baseline, output là CSV với cấu trúc **đã biết chính xác** (do
 mình kiểm soát format, không phải đoán):
 

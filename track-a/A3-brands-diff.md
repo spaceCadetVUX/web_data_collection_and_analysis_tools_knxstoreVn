@@ -1,6 +1,6 @@
 # A3 — `brands_of_interest` + logic diff
 
-Ước tính: 3-4h · Phụ thuộc: A2 (cần dữ liệu thật để test diff) · Xem [00-overview.md](00-overview.md).
+Ước tính: 3-4h · Phụ thuộc: A2 (cần dữ liệu thật để test diff) · Xem [README.md](README.md).
 
 ## Mục tiêu
 

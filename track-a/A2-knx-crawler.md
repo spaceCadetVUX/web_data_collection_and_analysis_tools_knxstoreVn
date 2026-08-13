@@ -1,6 +1,6 @@
 # A2 — Crawler KNX chạy theo lịch
 
-Ước tính: 4-6h · Phụ thuộc: A1 · Xem [00-overview.md](00-overview.md) cho bối cảnh.
+Ước tính: 4-6h · Phụ thuộc: A1 · Xem [README.md](README.md) cho bối cảnh.
 
 ## Mục tiêu
 
@@ -58,21 +58,21 @@ nhỏ), không crawl lại toàn bộ 10.167 thiết bị.
 
 ### Script crawl trang danh sách — đã viết và test
 
-[`scripts/crawl_knx_devices.py`](scripts/crawl_knx_devices.py) — Python, dùng `requests` +
-`beautifulsoup4` (`pip install -r scripts/requirements.txt`).
+[`src/crawl_knx_devices.py`](src/crawl_knx_devices.py) — Python, dùng `requests` +
+`beautifulsoup4` (`pip install -r src/requirements.txt`).
 
 Đã test thật trên 3 trang (36 thiết bị): không có field rỗng, không có `external_id` trùng,
 CSV ghi đúng định dạng.
 
 ```bash
 # Test nhỏ trước (khuyến nghị chạy trước khi full)
-python3 scripts/crawl_knx_devices.py --max-pages 3 --output test_run.csv
+python3 src/crawl_knx_devices.py --max-pages 3 --output test_run.csv
 
 # Chạy full 848 trang (~15-20 phút ở delay mặc định 1s)
-python3 scripts/crawl_knx_devices.py --output knx_devices_baseline.csv
+python3 src/crawl_knx_devices.py --output knx_devices_baseline.csv
 
 # Resume nếu bị đứt giữa chừng (ví dụ dừng ở trang 400)
-python3 scripts/crawl_knx_devices.py --start-page 400 --output knx_devices_baseline.csv --append
+python3 src/crawl_knx_devices.py --start-page 400 --output knx_devices_baseline.csv --append
 ```
 
 Script ghi CSV dần theo từng trang (flush ngay sau mỗi trang) — nếu bị đứt giữa chừng (mất
@@ -83,12 +83,12 @@ baseline, ghi thẳng DB cho weekly).
 
 ### Đóng gói Docker — đã viết và test thật
 
-[`scripts/Dockerfile`](scripts/Dockerfile) — build xong, chạy thử trong container thật (không
-chỉ build suông): `docker run --rm -v $(pwd)/data:/data registry-crawler --max-pages 2` → ra
+[`src/Dockerfile`](src/Dockerfile) — build xong, chạy thử trong container thật (không
+chỉ build suông): `docker run --rm -v $(pwd)/../data:/data registry-crawler --max-pages 2` → ra
 đúng 24 thiết bị, mount volume hoạt động, container tự thoát sau khi xong (đúng thiết kế "job",
 không phải service sống 24/7 như `news-extractor`).
 
-[`scripts/docker-compose.snippet.yml`](scripts/docker-compose.snippet.yml) — snippet để dev
+[`src/docker-compose.snippet.yml`](src/docker-compose.snippet.yml) — snippet để dev
 merge vào compose file thật của stack n8n/Postgres trên OrbStack (không tự viết được compose
 file đầy đủ vì không biết cấu trúc network/volume hiện tại — xem ghi chú trong file).
 
@@ -98,7 +98,7 @@ implement phần UPSERT + anomaly check ở "Hành vi mong muốn" phía trên.
 
 ## Đã viết và test thật — UPSERT + anomaly check + crawl_log
 
-[`scripts/import_and_diff.py`](scripts/import_and_diff.py) — generic cho mọi `registry_key`
+[`src/import_and_diff.py`](src/import_and_diff.py) — generic cho mọi `registry_key`
 (dùng chung cho KNX lẫn CSA Matter), nhận CSV có 3 cột bắt buộc (`external_id, brand, model`),
 các cột khác tự gom vào `attributes`.
 

@@ -9,7 +9,7 @@
 services:
   registry-crawler:
     build:
-      context: ./track-a/scripts
+      context: ./track-a/src
     volumes:
       - ./track-a/data:/data   # nơi CSV baseline được ghi ra, đổi path cho khớp host thật
     networks:

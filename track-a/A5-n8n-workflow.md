@@ -1,6 +1,6 @@
 # A5 — n8n workflow weekly + gửi Zalo
 
-Ước tính: 2-3h · Phụ thuộc: A3 · Xem [00-overview.md](00-overview.md).
+Ước tính: 2-3h · Phụ thuộc: A3 · Xem [README.md](README.md).
 
 ## Mục tiêu
 

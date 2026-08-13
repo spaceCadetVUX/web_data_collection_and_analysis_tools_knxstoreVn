@@ -1,7 +1,7 @@
 # A4 — Crawler CSA Matter certified DB
 
 Ước tính gốc: 5-8h · **Đã research xong, thực tế dễ hơn nhiều so với dự đoán** (xem dưới) ·
-Phụ thuộc: A1 · Xem [00-overview.md](00-overview.md).
+Phụ thuộc: A1 · Xem [README.md](README.md).
 
 ## Mục tiêu
 
@@ -100,11 +100,32 @@ Join brand = vendorMap[vid], external_id = f"{vid}-{pid}"
 Cùng flow UPSERT / anomaly check / crawl_log như A2, registry_key = 'matter_csa'
 ```
 
+## Script — đã viết và test thật
+
+[`src/crawl_matter_devices.py`](src/crawl_matter_devices.py) — Python, chỉ dùng `requests`
+(không cần `beautifulsoup4` vì là JSON API, không phải HTML). Đã chạy full thật, ra đúng
+[`data/matter_devices_baseline.csv`](data/matter_devices_baseline.csv) — 4.948 dòng, không
+trùng `external_id`, không brand rỗng. 65 dòng (9 vendorID) không tìm thấy tên hãng — dữ liệu
+gốc trên DCL thiếu `vendorInfo` tương ứng, không phải lỗi script, brand ghi
+`"(unknown vendor {id})"` để dễ lọc.
+
+Phần UPSERT + anomaly check + diff dùng chung
+[`src/import_and_diff.py`](src/import_and_diff.py) với A2 — **đã test end-to-end bằng chính
+dữ liệu Matter thật này**, xem chi tiết ở [A2-knx-crawler.md](A2-knx-crawler.md).
+
+```bash
+python3 src/crawl_matter_devices.py --max-records 50 --output test.csv   # test nhỏ trước
+python3 src/crawl_matter_devices.py --output data/matter_devices_baseline.csv  # full
+python3 src/import_and_diff.py --db-url "$DATABASE_URL" \
+    --csv data/matter_devices_baseline.csv --registry-key matter_csa
+```
+
 ## Definition of Done
 
 - [x] Research: xác nhận có API JSON công khai, không cần scrape HTML/Playwright
 - [x] Xác nhận tổng số lượng thật (4.948 model, 459 vendor) qua test trực tiếp
-- [ ] Crawler chạy 1 lần, ghi đúng số lượng sản phẩm vào `registry.snapshots`
-      (registry_key = 'matter_csa')
-- [ ] Join vendor đúng — spot-check vài `vid` xem tên hãng ra đúng không
-- [ ] Cùng bộ test case anomaly/duplicate như A2, áp dụng cho `matter_csa`
+- [x] Crawler chạy full thật, ra đúng 4.948 dòng sạch trong `data/matter_devices_baseline.csv`
+- [x] Join vendor đúng — spot-check nhiều `vid` (Panasonic, ABB...) ra đúng tên hãng
+- [x] Cùng bộ test case anomaly/duplicate như A2 — test chung bằng `import_and_diff.py`
+      trên chính dữ liệu Matter này, xem A2-knx-crawler.md
+- [ ] Chạy trên Postgres 5433 thật (hiện chỉ test trên Postgres tạm) — chờ credential
