@@ -570,6 +570,10 @@ Lấy top 5 event mỗi ngày. Dựa trên tín hiệu quan sát được, khôn
 
 ## 7. Nguồn dữ liệu
 
+**Cập nhật (2026-08-13):** Tùng đang tự tìm nguồn uy tín để crawl bài viết cho Track B, thay
+vì dùng nguyên danh sách mẫu ở §7.2 — sẽ đưa vào `sources.yaml` khi build B0. Danh sách §7.2
+dưới đây vẫn là tham khảo cho cơ cấu tier/category, không phải danh sách chốt cuối.
+
 ### 7.1 Cách quản lý
 
 Seed bằng `sources.yaml` trong git, load vào DB qua migration script. Runtime đọc từ DB để bật/tắt không cần deploy.

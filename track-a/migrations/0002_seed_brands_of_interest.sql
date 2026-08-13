@@ -102,10 +102,11 @@ UPDATE registry.brands_of_interest SET aliases = ARRAY['Ekinex S.p.A.'] WHERE br
 UPDATE registry.brands_of_interest SET aliases = ARRAY['CoolAutomation'] WHERE brand = 'Cool Automation';
 UPDATE registry.brands_of_interest SET aliases = ARRAY['STEINEL professional'] WHERE brand = 'Steinel';
 UPDATE registry.brands_of_interest SET aliases = ARRAY['AIRZONE – ALTRA'] WHERE brand = 'Airzone';
+UPDATE registry.brands_of_interest SET aliases = ARRAY['Kanontec - KanonBUS'] WHERE brand = 'Kanonbus';
+-- Đã xác nhận (2026-08-13): 'Kanonbus' là tên hãng thật, không phải dòng sản phẩm của hãng
+-- khác — giữ nguyên trong seed, alias 'Kanontec - KanonBUS' áp dụng bình thường.
 
 -- Cần Tùng xác nhận trước khi tin — KHÔNG tự quyết định, chỉ ghi alias khả nghi:
--- 'Kanonbus' <-> 'Kanontec - KanonBUS' trong dữ liệu thật — nghi là dòng sản phẩm của hãng
---   "Kanontec", không phải tên hãng riêng "Kanonbus". Chưa UPDATE alias, chờ xác nhận.
 -- 'RESI' <-> 'Resideo' trong dữ liệu Matter — không chắc cùng công ty, chỉ là gợi ý tên gần
 --   giống, chưa UPDATE alias.
 -- 'Systemline E50' — nghi là dòng sản phẩm của hãng "Trivum" (đã có sẵn trong list riêng),

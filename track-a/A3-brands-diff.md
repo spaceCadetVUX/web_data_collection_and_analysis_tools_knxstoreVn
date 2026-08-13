@@ -21,19 +21,19 @@ CREATE TABLE registry.brands_of_interest (
 );
 ```
 
-**Đã nhận seed thật từ Tùng (75 brand + 90 category KNXStore đang bán)** — xem
-[`../data/knxstore-brands-raw.txt`](../data/knxstore-brands-raw.txt),
+**Đã nhận seed thật từ Tùng (75 brand + 90 category KNXStore đang bán, chốt 75 — không phải
+80 như nhãn ban đầu)** — xem [`../data/knxstore-brands-raw.txt`](../data/knxstore-brands-raw.txt),
 [`../data/knxstore-categories.csv`](../data/knxstore-categories.csv). Seed SQL đã viết + test
 thật ở [`../migrations/0002_seed_brands_of_interest.sql`](../migrations/0002_seed_brands_of_interest.sql) —
 73/75 brand insert được (2 loại trừ vì không phải tên hãng: "Khác", "Casambi Enocean Switch"),
-11 brand đã có alias **verify bằng grep trực tiếp trên dữ liệu KNX/Matter thật đã crawl**
+12 brand đã có alias **verify bằng grep trực tiếp trên dữ liệu KNX/Matter thật đã crawl**
 (không suy đoán) — ví dụ `HUGO MULLER` → `Hugo Müller GmbH & Co KG`, `ABB` → 4 biến thể chi
-nhánh thật (Busch-Jaeger, Stotz-Kontakt, SACE, Xiamen).
+nhánh thật (Busch-Jaeger, Stotz-Kontakt, SACE, Xiamen). **`Kanonbus` đã xác nhận là tên hãng
+thật** (không phải dòng sản phẩm như nghi ngờ ban đầu), alias `Kanontec - KanonBUS` áp dụng
+bình thường.
 
-Vài entry cần Tùng xác nhận thêm trước khi tin (ghi rõ trong file seed): `Kanonbus` (nghi là
-dòng sản phẩm của hãng "Kanontec", không phải tên hãng riêng), `RESI` (gần giống "Resideo"
-nhưng chưa chắc cùng công ty), `Systemline E50` (nghi là dòng sản phẩm của `Trivum`), `OEM`,
-`Maximum Security` (tên chung chung, không rõ có phải 1 hãng cụ thể).
+Còn `RESI`, `Systemline E50`, `OEM`, `Maximum Security` vẫn chưa xác nhận — giữ nguyên trong
+seed nhưng chưa gán alias, chờ Tùng xác nhận sau nếu cần.
 
 **Alias tiếng Trung: chưa cần** — danh sách 75 brand hiện tại của KNXStore chưa có brand nào
 gốc Trung Quốc rõ ràng (Moorgen, GVS là brand TQ nhưng team đặt tên bằng tên quốc tế, không
