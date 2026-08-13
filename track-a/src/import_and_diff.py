@@ -35,9 +35,6 @@ def main():
     with open(args.csv, encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     item_count = len(rows)
-    if item_count == 0:
-        print("CSV rỗng, không làm gì cả — có thể crawler bị lỗi, kiểm tra lại trước khi chạy.", file=sys.stderr)
-        sys.exit(1)
 
     conn = psycopg2.connect(args.db_url)
     conn.autocommit = False
@@ -49,6 +46,20 @@ def main():
     # clock_timestamp() = giờ thực tại thời điểm gọi, dùng riêng để đo duration_ms.
     cur.execute("SELECT now(), clock_timestamp()")
     start, wall_start = cur.fetchone()
+
+    if item_count == 0:
+        # Ghi crawl_log.status='failed' trước khi thoát — nếu không, case này biến mất
+        # hoàn toàn khỏi crawl_log (khác case aborted_anomaly có ghi), đúng loại "chết âm
+        # thầm" mà bảng crawl_log được tạo ra để tránh (xem A2-knx-crawler.md).
+        cur.execute(
+            """INSERT INTO registry.crawl_log (registry_key, run_at, item_count, status, error)
+               VALUES (%s, %s, 0, 'failed', %s)""",
+            (args.registry_key, start, "CSV rỗng — có thể crawler bị lỗi hoặc nguồn tạm không trả kết quả"),
+        )
+        conn.commit()
+        print("CSV rỗng, không làm gì cả — có thể crawler bị lỗi, kiểm tra lại trước khi chạy. "
+              "Đã ghi crawl_log.status=failed.", file=sys.stderr)
+        sys.exit(1)
 
     try:
         cur.execute(

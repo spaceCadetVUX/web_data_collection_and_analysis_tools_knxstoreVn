@@ -17,7 +17,7 @@ hơn ước tính ban đầu nhờ CSA Matter có API JSON (không cần scrape)
 | A2 | Crawler KNX + UPSERT/diff | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 10.167 thiết bị đang nằm trong `registry.devices` |
 | A3 | `brands_of_interest` + diff logic | ✅ 73 brand thật đã seed vào Postgres dev, 12 brand có alias verify bằng dữ liệu crawl thật. Query match thật cho ra 34 nhóm brand/registry khớp. Vài entry chờ Tùng xác nhận thêm |
 | A4 | Crawler CSA Matter | ✅ Code + test xong. Baseline thật đã crawl **và import vào Postgres dev** — 4.948 thiết bị đang nằm trong `registry.devices` |
-| A5 | n8n workflow + Zalo | 🟡 Đang làm — query diff + format message xong trong n8n-dev, **thiếu node gửi Zalo thật** + check crawl fail/anomaly. Xem "Việc chưa giải quyết" trong [A5-n8n-workflow.md](A5-n8n-workflow.md) |
+| A5 | Webapp weekly + gửi Zalo (đã bỏ n8n) | 🟡 Đang làm — webapp `track-a/webapp/` (FastAPI) tự làm crawl+import+diff+format+gửi, có Dashboard/Products/Settings/Logs, scheduler nội bộ. **Thiếu gửi Zalo KHub thật** + check crawl fail/anomaly ghi log đầy đủ. Xem [A5-n8n-workflow.md](A5-n8n-workflow.md) (lịch sử quyết định, đã deprecated phần n8n) |
 
 **Cập nhật (2026-08-13): đã dựng Postgres dev cục bộ chạy thật** (không phải container tạm
 xoá sau test) — `track-a/src/docker-compose.yml`, image `pgvector/pgvector:pg17` khớp
@@ -33,11 +33,19 @@ Credential nằm trong `track-a/src/.env` (không commit — xem `.env.example` 
 Khi chuyển lên Mac Mini, chỉ cần export lại data + trỏ `.env` sang host mới, schema/code không
 đổi gì.
 
-**Việc còn chặn thật sự (2026-08-13):** node gửi Zalo KHub thật trong A5 — n8n-dev không có
-credential KHub (chỉ có ở n8n production `n8n.tungvu.vn`, xem chi tiết trong
-[A5-n8n-workflow.md](A5-n8n-workflow.md) mục "Việc chưa giải quyết"). Ngoài ra `launchd` chạy
-crawler tự động đang bị macOS TCC chặn, cần tự cấp Full Disk Access cho `/bin/bash` — chạy tay
-vẫn hoạt động bình thường. Postgres không còn chặn gì ở mức dev/test nữa.
+**Cập nhật (2026-08-13, sau đó trong ngày): đổi hướng A5 từ n8n sang webapp riêng.** n8n-dev
+container đã dừng (`docker stop n8n-dev`, chưa xoá volume). Lý do đổi: muốn UI settings/trigger
+gộp 1 chỗ, không phụ thuộc n8n production (`n8n.tungvu.vn`) mà nhóm không có quyền truy cập lúc
+build. Webapp (`track-a/webapp/`, FastAPI) tự làm hết: crawl → import → diff → format → gửi,
+có Dashboard (trigger + progress bar %), Products (list 15.115 thiết bị, filter brand/registry/
+model), Settings (lịch weekly + brands_of_interest), Logs. Scheduler nội bộ (APScheduler) thay
+launchd — không còn vướng macOS TCC nữa (launchd cũ vẫn còn file plist nhưng không cần dùng).
+
+**Việc còn chặn thật sự:** gửi Zalo KHub thật — vẫn chưa có credential/API KHub ở máy dev này
+(xem `webapp/zalo.py`, đang placeholder ghi log). Ngoài ra **KNX Association site đang trả
+"No Results"** kể từ chiều 13/08 (có thể do crawl quá nhiều lần trong ngày, ~2.500+ request) —
+tạm ngưng bấm Trigger cho tới khi site bình thường lại. Postgres không còn chặn gì ở mức
+dev/test nữa.
 
 ---
 
@@ -54,16 +62,27 @@ track-a/
 ├── migrations/
 │   ├── 0001_create_registry_schema.sql
 │   ├── 0001_create_registry_schema.down.sql
-│   └── 0002_seed_brands_of_interest.sql
-├── src/                       Toàn bộ code — Python + Docker
+│   ├── 0002_seed_brands_of_interest.sql
+│   ├── 0003_app_settings_and_digest_log.sql       cho webapp (lịch + log gửi digest)
+│   └── 0003_app_settings_and_digest_log.down.sql
+├── src/                       Toàn bộ code crawler — Python + Docker
 │   ├── crawl_knx_devices.py
 │   ├── crawl_matter_devices.py
 │   ├── import_and_diff.py     UPSERT + anomaly check + crawl_log (dùng chung KNX/Matter)
 │   ├── requirements.txt
 │   ├── Dockerfile                     đóng gói crawler
 │   ├── docker-compose.snippet.yml     snippet để dev ghép vào compose thật của n8n stack
-│   ├── docker-compose.yml             Postgres DEV chạy thật (không commit .env)
+│   ├── docker-compose.yml             Postgres DEV chạy thật (n8n service đã comment out)
+│   ├── run_weekly_crawl.sh            script cron cũ (launchd) — không cần nữa, webapp tự lo
 │   └── .env.example                   mẫu credential — copy thành .env, điền thật
+├── webapp/                    Web app FastAPI thay n8n cho A5 — Dashboard/Products/Settings/Logs
+│   ├── app.py                 Routes
+│   ├── pipeline.py             Crawl+import+diff+format+gửi, parse progress real-time
+│   ├── scheduler.py           APScheduler, lịch đọc từ registry.app_settings
+│   ├── zalo.py                 send_to_khub() — placeholder, chưa có credential thật
+│   ├── db.py
+│   ├── templates/
+│   └── run_webapp.sh           uvicorn app:app --port 8800
 └── data/                      CSV baseline thật đã crawl + reference data KNXStore
     ├── knx_devices_baseline.csv       (10.167 dòng)
     ├── matter_devices_baseline.csv    (4.948 dòng)
@@ -80,7 +99,7 @@ A1 (schema + import CSV KNX)
   │                                        │
   └──► A4 (crawler CSA Matter, song song A2)   │
                                                ▼
-                                        A5 (n8n weekly + gửi Zalo)
+                                        A5 (webapp weekly + gửi Zalo — đã bỏ n8n)
 ```
 
 A2 và A4 có thể làm song song sau khi A1 xong (cả hai chỉ phụ thuộc schema, không phụ thuộc
@@ -92,7 +111,7 @@ lẫn nhau). A3 cần A2 chạy được ít nhất 1 lần để có dữ liệ
 | [A2-knx-crawler.md](A2-knx-crawler.md) | Viết crawler KNX mới, chạy theo lịch | 4-6h |
 | [A3-brands-diff.md](A3-brands-diff.md) | `brands_of_interest` + logic diff | 3-4h |
 | [A4-matter-crawler.md](A4-matter-crawler.md) | Crawler CSA Matter certified DB | 5-8h → thực tế thấp hơn (xem file) |
-| [A5-n8n-workflow.md](A5-n8n-workflow.md) | n8n workflow weekly + gửi Zalo | 2-3h |
+| [A5-n8n-workflow.md](A5-n8n-workflow.md) | Weekly digest + gửi Zalo — bắt đầu bằng n8n, đổi sang webapp (`webapp/`) giữa lúc build, xem đầu file | 2-3h ước tính gốc |
 
 ---
 

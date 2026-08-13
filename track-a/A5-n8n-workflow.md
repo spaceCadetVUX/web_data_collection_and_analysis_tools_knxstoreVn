@@ -1,5 +1,13 @@
 # A5 — n8n workflow weekly + gửi Zalo
 
+> ⚠️ **DEPRECATED (2026-08-13, cuối ngày).** Sau khi build xong workflow n8n mô tả trong file
+> này, đổi hướng sang **webapp riêng** (`track-a/webapp/`, FastAPI) — muốn gộp UI settings +
+> trigger + progress bar 1 chỗ, không phụ thuộc n8n production (`n8n.tungvu.vn`) mà nhóm chưa
+> có quyền truy cập. Container `n8n-dev` đã dừng. File này giữ lại làm **lịch sử quyết định**
+> (kênh Zalo, hành vi 0-match, kiến trúc trigger crawler — tất cả vẫn áp dụng cho webapp mới,
+> không đổi). Xem trạng thái/kiến trúc thật hiện tại ở [README.md](README.md) §0 và mã nguồn
+> trong `webapp/`.
+
 Ước tính: 2-3h · Phụ thuộc: A3 · Xem [README.md](README.md).
 
 ## Trạng thái (2026-08-13)
