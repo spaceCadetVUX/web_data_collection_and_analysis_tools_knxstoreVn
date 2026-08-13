@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Products ({{ total }} thiết bị)</h1>
+
+<div class="card">
+  <form method="get" action="/products" class="row">
+    <select name="registry">
+      <option value="">Tất cả registry</option>
+      {% for r in registry_keys %}
+      <option value="{{ r }}" {% if selected_registry == r %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="brand" list="brand-list" placeholder="Tìm brand..."
+           value="{{ selected_brand }}" style="width: 16rem">
+    <datalist id="brand-list">
+      {% for b in all_brands %}
+      <option value="{{ b }}">
+      {% endfor %}
+    </datalist>
+    <input type="text" name="model" placeholder="Tìm model..." value="{{ selected_model }}" style="width: 14rem">
+    <button type="submit">Lọc</button>
+    {% if selected_registry or selected_brand or selected_model %}
+    <a href="/products"><button class="secondary" type="button">Xoá lọc</button></a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Registry</th><th>Brand</th><th>Model</th><th>Category</th><th>First seen</th><th>Status</th><th>Nguồn</th></tr>
+    {% for d in devices %}
+    <tr>
+      <td>{{ d.registry_key }}</td>
+      <td>{{ d.brand }}</td>
+      <td>{{ d.model }}</td>
+      <td class="muted">{{ d.category or "" }}</td>
+      <td>{{ d.first_seen_at }}</td>
+      <td><span class="badge {{ 'active' if d.status == 'active' else 'failed' }}">{{ d.status }}</span></td>
+      <td>
+        {% if d.attributes and d.attributes.source_url %}
+        <a href="{{ d.attributes.source_url }}" target="_blank" rel="noopener">↗ Xem</a>
+        {% else %}
+        <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% set qs = "&registry=" + (selected_registry | urlencode) + "&brand=" + (selected_brand | urlencode) + "&model=" + (selected_model | urlencode) %}
+<div class="row" style="justify-content: center; margin-top: 1rem">
+  {% if page > 1 %}
+  <a href="/products?page={{ page - 1 }}{{ qs }}"><button class="secondary" type="button">← Trước</button></a>
+  {% endif %}
+  <span class="muted">Trang {{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="/products?page={{ page + 1 }}{{ qs }}"><button class="secondary" type="button">Sau →</button></a>
+  {% endif %}
+</div>
+{% endblock %}

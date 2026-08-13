@@ -24,7 +24,9 @@ def _start_scheduler():
 
 # Trạng thái pipeline đang chạy nền — chỉ cho 1 lần chạy tại 1 thời điểm, tránh 2 lần
 # trigger đè lên nhau (crawl full mất ~15-20 phút, dễ bấm nhầm 2 lần).
-_pipeline_state = {"running": False, "started_at": None, "result": None, "error": None}
+_pipeline_state = {
+    "running": False, "started_at": None, "result": None, "error": None, "progress": {},
+}
 _pipeline_lock = threading.Lock()
 _stop_event = threading.Event()
 _process_registry = {"proc": None}
@@ -33,7 +35,10 @@ _process_registry = {"proc": None}
 def _run_pipeline_background(trigger_type: str):
     try:
         result = run_full_pipeline(
-            trigger_type=trigger_type, stop_event=_stop_event, process_registry=_process_registry
+            trigger_type=trigger_type,
+            stop_event=_stop_event,
+            process_registry=_process_registry,
+            progress=_pipeline_state["progress"],
         )
         _pipeline_state["result"] = result
         _pipeline_state["error"] = None
@@ -85,6 +90,7 @@ def trigger():
         _pipeline_state["started_at"] = datetime.now().isoformat()
         _pipeline_state["result"] = None
         _pipeline_state["error"] = None
+        _pipeline_state["progress"].clear()
         _stop_event.clear()
 
     thread = threading.Thread(target=_run_pipeline_background, args=("manual",), daemon=True)
@@ -171,6 +177,66 @@ def toggle_brand(brand_id: int):
         )
         conn.commit()
     return RedirectResponse("/settings", status_code=303)
+
+
+PRODUCTS_PAGE_SIZE = 50
+REGISTRY_KEYS = ["knx", "matter_csa", "dali"]
+
+
+@app.get("/products")
+def products_page(request: Request, page: int = 1, registry: str = "", brand: str = "", model: str = ""):
+    page = max(page, 1)
+    offset = (page - 1) * PRODUCTS_PAGE_SIZE
+
+    where_clauses = []
+    params: list = []
+    if registry:
+        where_clauses.append("registry_key = %s")
+        params.append(registry)
+    if brand:
+        where_clauses.append("brand ILIKE %s")
+        params.append(f"%{brand}%")
+    if model:
+        where_clauses.append("model ILIKE %s")
+        params.append(f"%{model}%")
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(f"SELECT count(*) AS total FROM registry.devices {where_sql}", params)
+        total = cur.fetchone()["total"]
+
+        cur.execute(
+            f"""
+            SELECT registry_key, brand, model, category, first_seen_at, status, attributes
+            FROM registry.devices
+            {where_sql}
+            ORDER BY first_seen_at DESC, brand
+            LIMIT %s OFFSET %s
+            """,
+            (*params, PRODUCTS_PAGE_SIZE, offset),
+        )
+        devices = cur.fetchall()
+
+        cur.execute("SELECT DISTINCT brand FROM registry.devices ORDER BY brand")
+        all_brands = [r["brand"] for r in cur.fetchall()]
+
+    total_pages = max((total + PRODUCTS_PAGE_SIZE - 1) // PRODUCTS_PAGE_SIZE, 1)
+
+    return templates.TemplateResponse(
+        "products.html",
+        {
+            "request": request,
+            "devices": devices,
+            "total": total,
+            "page": page,
+            "total_pages": total_pages,
+            "registry_keys": REGISTRY_KEYS,
+            "all_brands": all_brands,
+            "selected_registry": registry,
+            "selected_brand": brand,
+            "selected_model": model,
+        },
+    )
 
 
 @app.get("/logs")

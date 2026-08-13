@@ -73,11 +73,20 @@
     input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     .muted { color: var(--text-muted); font-size: 0.85rem; }
     .row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .progress-track {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+      height: 10px; overflow: hidden; margin-top: 0.6rem;
+    }
+    .progress-fill {
+      background: var(--accent); height: 100%; border-radius: 999px;
+      transition: width 0.4s ease;
+    }
   </style>
 </head>
 <body>
   <nav>
     <a href="/">Dashboard</a>
+    <a href="/products">Products</a>
     <a href="/settings">Settings</a>
     <a href="/logs">Logs</a>
   </nav>

@@ -1,11 +1,24 @@
-INFO:     Started server process [40851]
+INFO:     Started server process [42682]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8800 (Press CTRL+C to quit)
-INFO:     127.0.0.1:58100 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58103 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58105 - "POST /trigger HTTP/1.1" 303 See Other
-INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58105 - "POST /stop HTTP/1.1" 303 See Other
-INFO:     127.0.0.1:58105 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58596 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /products?page=2&registry=&brand=&model=ac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /products?page=2&registry=&brand=&model=ac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "POST /trigger HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58626 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58626 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58856 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58858 - "GET /products?registry=&brand=&model=plug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58858 - "GET /products?page=2&registry=&brand=&model=plug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58864 - "GET /products?page=3&registry=&brand=&model=plug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58864 - "GET /products?page=4&registry=&brand=&model=plug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58864 - "GET /products?registry=&brand=&model=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58874 - "GET /products?page=2&registry=&brand=&model=light HTTP/1.1" 200 OK

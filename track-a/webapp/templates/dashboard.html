@@ -18,8 +18,29 @@
   </div>
 
   {% if pipeline_state.running %}
-    <p class="muted">Bắt đầu lúc {{ pipeline_state.started_at }} — trang tự refresh mỗi 10s.</p>
-    <script>setTimeout(() => location.reload(), 10000);</script>
+    <p class="muted">Bắt đầu lúc {{ pipeline_state.started_at }}</p>
+    <p id="progress-text" class="muted">Đang khởi động...</p>
+    <div class="progress-track"><div id="progress-fill" class="progress-fill" style="width: 0%"></div></div>
+    <script>
+      async function pollStatus() {
+        const res = await fetch("/status");
+        const s = await res.json();
+        if (!s.running) { location.reload(); return; }
+        const p = s.progress || {};
+        const text = document.getElementById("progress-text");
+        const fill = document.getElementById("progress-fill");
+        if (p.phase) {
+          let msg = p.phase;
+          if (p.current != null && p.total) msg += ` — ${p.current} / ${p.total}`;
+          else if (p.current != null) msg += ` — ${p.current}`;
+          if (p.percent != null) msg += ` (${p.percent}%)`;
+          text.textContent = msg;
+        }
+        fill.style.width = (p.percent != null ? p.percent : 0) + "%";
+        setTimeout(pollStatus, 2000);
+      }
+      pollStatus();
+    </script>
   {% elif pipeline_state.error %}
     <p><span class="badge failed">lỗi</span> {{ pipeline_state.error }}</p>
   {% elif pipeline_state.result %}
