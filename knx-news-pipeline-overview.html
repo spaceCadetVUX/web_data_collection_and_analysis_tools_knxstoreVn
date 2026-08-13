@@ -1,0 +1,521 @@
+<title>KNX News Pipeline</title>
+<style>
+  :root {
+    --bg: #f5f6f7;
+    --surface: #ffffff;
+    --surface-muted: #eceef0;
+    --border: #d7dbdf;
+    --text: #14181c;
+    --text-muted: #5b6570;
+    --accent-teal: #0c7a8c;
+    --accent-teal-soft: rgba(12,122,140,0.09);
+    --accent-amber: #b45309;
+    --accent-amber-soft: rgba(180,83,9,0.10);
+    --callout-border: #c7cdd2;
+
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI Semibold", "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11151a;
+      --surface: #171c22;
+      --surface-muted: #1d232a;
+      --border: #2b333b;
+      --text: #e7ebee;
+      --text-muted: #99a3ac;
+      --accent-teal: #3cbcd0;
+      --accent-teal-soft: rgba(60,188,208,0.12);
+      --accent-amber: #e8912f;
+      --accent-amber-soft: rgba(232,145,47,0.13);
+      --callout-border: #3a434c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11151a;
+    --surface: #171c22;
+    --surface-muted: #1d232a;
+    --border: #2b333b;
+    --text: #e7ebee;
+    --text-muted: #99a3ac;
+    --accent-teal: #3cbcd0;
+    --accent-teal-soft: rgba(60,188,208,0.12);
+    --accent-amber: #e8912f;
+    --accent-amber-soft: rgba(232,145,47,0.13);
+    --callout-border: #3a434c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    margin: 0;
+  }
+
+  .page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .dek {
+    font-size: 15.5px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  section h2 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 16px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .diagram-scroll {
+    overflow-x: auto;
+  }
+
+  .diagram-scroll svg {
+    display: block;
+    width: 100%;
+    min-width: 760px;
+    height: auto;
+  }
+
+  figcaption {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .swatch {
+    width: 22px;
+    height: 0;
+    border-top-width: 2.5px;
+    border-top-style: solid;
+    flex-shrink: 0;
+  }
+  .swatch.dashed { border-top-style: dashed; }
+  .swatch.teal { border-color: var(--accent-teal); }
+  .swatch.amber { border-color: var(--accent-amber); }
+  .swatch.grey { border-color: var(--text-muted); }
+
+  .tag-ai {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--surface);
+    background: var(--accent-teal);
+    border-radius: 4px;
+    padding: 2px 5px;
+    flex-shrink: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+    background: var(--surface-muted);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  .col-name { font-weight: 600; white-space: nowrap; }
+  .mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+  .table-scroll { overflow-x: auto; }
+
+  .notes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .note-row {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .note-ref {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--accent-teal);
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+
+  .callout {
+    border: 1px dashed var(--callout-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+  }
+
+  .callout strong { color: var(--text); }
+
+  footer {
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">KNXStore.vn — knx-news-agent-plan v1.1</p>
+    <h1>Pipeline tổng quan</h1>
+    <p class="dek">Luồng dữ liệu từ lúc thu thập tin ngành building automation đến khi ra digest — gồm 2 track song song (Registry Diff, News Pipeline) và 2 đường bypass thời gian thực không qua LLM/batch.</p>
+  </header>
+
+  <section>
+    <div class="panel">
+      <div class="diagram-scroll">
+        <svg viewBox="0 0 900 1160" role="img" aria-label="Sơ đồ pipeline: Registry Diff chạy song song phía trên, đổ vào một alert bus bên phải; News Pipeline chạy dọc ở giữa qua extract, dedupe, triage, event clustering, deep analysis, ranking, digest, delivery; feedback vòng ngược lại tầng triage để tinh chỉnh prompt.">
+          <defs>
+            <pattern id="dotgrid" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="1.2" cy="1.2" r="1.2" fill="var(--border)" />
+            </pattern>
+            <marker id="arrow-teal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent-teal)" />
+            </marker>
+            <marker id="arrow-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent-amber)" />
+            </marker>
+            <marker id="arrow-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-muted)" />
+            </marker>
+          </defs>
+
+          <rect x="0" y="0" width="900" height="1160" fill="url(#dotgrid)" />
+
+          <!-- ===== Registry Diff lane ===== -->
+          <text x="60" y="30" font-family="var(--font-mono)" font-size="10.5" letter-spacing="0.08em" fill="var(--text-muted)">TRACK A — REGISTRY DIFF (không qua LLM)</text>
+
+          <rect x="60" y="48" width="170" height="52" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="145" y="70" text-anchor="middle" font-family="var(--font-display)" font-size="13.5" font-weight="700" fill="var(--text)">Registry DB</text>
+          <text x="145" y="86" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">KNX · CSA Matter · DALI</text>
+
+          <line x1="230" y1="74" x2="266" y2="74" class="flow-teal" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <rect x="270" y="48" width="190" height="52" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="365" y="70" text-anchor="middle" font-family="var(--font-display)" font-size="13.5" font-weight="700" fill="var(--text)">Diff snapshot</text>
+          <text x="365" y="86" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">so với crawl tuần trước</text>
+
+          <line x1="460" y1="74" x2="496" y2="74" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <rect x="500" y="48" width="190" height="52" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="595" y="70" text-anchor="middle" font-family="var(--font-display)" font-size="13.5" font-weight="700" fill="var(--text)">Filter brand</text>
+          <text x="595" y="86" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">brands_of_interest</text>
+
+          <!-- stub R3 -> bus -->
+          <line x1="690" y1="74" x2="757" y2="74" stroke="var(--accent-amber)" stroke-width="2" stroke-dasharray="6 5" />
+          <circle cx="760" cy="74" r="4" fill="var(--accent-amber)" />
+          <text x="700" y="112" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">device mới + brand match</text>
+
+          <!-- ===== Alert bus ===== -->
+          <line x1="760" y1="74" x2="760" y2="989" stroke="var(--accent-amber)" stroke-width="2" stroke-dasharray="6 5" />
+          <rect x="6" y="6" width="1" height="1" fill="none" />
+          <text x="700" y="140" font-family="var(--font-mono)" font-size="10.5" font-weight="600" fill="var(--text-muted)">⚡ ALERT BUS — bypass LLM/batch</text>
+
+          <!-- ===== Main pipeline column ===== -->
+          <text x="70" y="196" font-family="var(--font-mono)" font-size="10.5" letter-spacing="0.08em" fill="var(--text-muted)">TRACK B — NEWS PIPELINE</text>
+
+          <!-- Row 1: Nguồn -->
+          <rect x="70" y="210" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="233" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Nguồn</text>
+          <text x="260" y="250" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">RSS · Sitemap · HTML list (~40 nguồn)</text>
+
+          <line x1="260" y1="264" x2="260" y2="300" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 2: extractor -->
+          <rect x="70" y="304" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="327" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">news-extractor</text>
+          <text x="260" y="344" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">trafilatura → title, body, canonical_url</text>
+
+          <!-- renderer branch -->
+          <line x1="450" y1="320" x2="551" y2="320" stroke="var(--accent-teal)" stroke-width="1.75" stroke-dasharray="5 4" marker-end="url(#arrow-teal)" />
+          <text x="502" y="312" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="var(--text-muted)">requires_js=true</text>
+          <line x1="551" y1="345" x2="450" y2="345" stroke="var(--accent-teal)" stroke-width="1.75" stroke-dasharray="5 4" marker-end="url(#arrow-teal)" />
+
+          <rect x="555" y="304" width="170" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="640" y="327" text-anchor="middle" font-family="var(--font-display)" font-size="13" font-weight="700" fill="var(--text)">news-renderer</text>
+          <text x="640" y="344" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">Playwright (JS)</text>
+
+          <line x1="260" y1="358" x2="260" y2="394" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 3: dedupe -->
+          <rect x="70" y="398" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="421" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Dedupe</text>
+          <text x="260" y="438" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">Canonical URL → SimHash (Hamming ≤3)</text>
+
+          <line x1="260" y1="452" x2="260" y2="488" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 4: Triage (AI) -->
+          <rect x="70" y="492" width="380" height="54" rx="8" fill="var(--accent-teal-soft)" stroke="var(--accent-teal)" stroke-width="1.5" />
+          <rect x="416" y="500" width="26" height="14" rx="4" fill="var(--accent-teal)" />
+          <text x="429" y="510.5" text-anchor="middle" font-family="var(--font-mono)" font-size="9" font-weight="700" fill="var(--surface)">AI</text>
+          <text x="260" y="515" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Triage</text>
+          <text x="260" y="532" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">Haiku 4.5 · Batch API · verdict enum</text>
+
+          <!-- stub Triage -> bus -->
+          <line x1="450" y1="519" x2="757" y2="519" stroke="var(--accent-amber)" stroke-width="2" stroke-dasharray="6 5" />
+          <circle cx="760" cy="519" r="4" fill="var(--accent-amber)" />
+          <text x="600" y="510" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)">hard rule: recall · eol · standard_update</text>
+
+          <line x1="260" y1="546" x2="260" y2="582" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+          <text x="275" y="568" font-family="var(--font-mono)" font-size="9.5" fill="var(--text-muted)">verdict ∈ {digest, alert}</text>
+
+          <!-- Row 5: Event clustering (AI) -->
+          <rect x="70" y="586" width="380" height="54" rx="8" fill="var(--accent-teal-soft)" stroke="var(--accent-teal)" stroke-width="1.5" />
+          <rect x="416" y="594" width="26" height="14" rx="4" fill="var(--accent-teal)" />
+          <text x="429" y="604.5" text-anchor="middle" font-family="var(--font-mono)" font-size="9" font-weight="700" fill="var(--surface)">AI</text>
+          <text x="260" y="609" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Event clustering</text>
+          <text x="260" y="626" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">Haiku 4.5 · 1×/ngày · theo title 72h</text>
+
+          <text x="260" y="654" text-anchor="middle" font-family="var(--font-body)" font-size="10.5" font-style="italic" fill="var(--text-muted)">fail toàn bộ → gửi riêng lẻ, event_id = null</text>
+
+          <line x1="260" y1="640" x2="260" y2="676" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+          <text x="275" y="662" font-family="var(--font-mono)" font-size="9.5" fill="var(--text-muted)">event ≥1 bài digest/alert</text>
+
+          <!-- Row 6: Deep analysis (AI) -->
+          <rect x="70" y="680" width="380" height="54" rx="8" fill="var(--accent-teal-soft)" stroke="var(--accent-teal)" stroke-width="1.5" />
+          <rect x="416" y="688" width="26" height="14" rx="4" fill="var(--accent-teal)" />
+          <text x="429" y="698.5" text-anchor="middle" font-family="var(--font-mono)" font-size="9" font-weight="700" fill="var(--surface)">AI</text>
+          <text x="260" y="703" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Deep analysis</text>
+          <text x="260" y="720" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">Haiku 4.5 · Messages API realtime</text>
+
+          <line x1="260" y1="734" x2="260" y2="770" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 7: Ranking -->
+          <rect x="70" y="774" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="797" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Ranking</text>
+          <text x="260" y="814" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">tier + source_count + brand + type</text>
+
+          <line x1="260" y1="828" x2="260" y2="864" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 8: Digest -->
+          <rect x="70" y="868" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="891" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Digest</text>
+          <text x="260" y="908" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">top 5 event/ngày</text>
+
+          <line x1="260" y1="922" x2="260" y2="958" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+          <text x="275" y="944" font-family="var(--font-mono)" font-size="9.5" fill="var(--text-muted)">top 5/ngày</text>
+
+          <!-- Row 9: Delivery -->
+          <rect x="70" y="962" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="985" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Delivery</text>
+          <text x="260" y="1002" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">Zalo KHub · Telegram</text>
+
+          <!-- bus -> Delivery -->
+          <line x1="760" y1="989" x2="453" y2="989" stroke="var(--accent-amber)" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow-amber)" />
+
+          <line x1="260" y1="1016" x2="260" y2="1052" stroke="var(--accent-teal)" stroke-width="2" marker-end="url(#arrow-teal)" />
+
+          <!-- Row 10: Feedback -->
+          <rect x="70" y="1056" width="380" height="54" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="260" y="1079" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="700" fill="var(--text)">Feedback</text>
+          <text x="260" y="1096" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--text-muted)">rating −1 / 0 / 1 / 2</text>
+
+          <!-- feedback loop -->
+          <polyline points="70,1083 40,1083 40,519 67,519" fill="none" stroke="var(--text-muted)" stroke-width="1.75" stroke-dasharray="4 4" marker-end="url(#arrow-grey)" />
+          <text x="30" y="800" font-family="var(--font-mono)" font-size="10" fill="var(--text-muted)" transform="rotate(-90 30 800)" text-anchor="middle">feedback → tinh chỉnh prompt</text>
+
+        </svg>
+      </div>
+
+      <figcaption>Đường liền xanh: luồng chính đi tuần tự qua từng tầng. Đường đứt cam ("alert bus"): 2 đường bypass không qua LLM/batch — registry diff phát hiện thiết bị mới, và hard rule ở tầng Triage — cả hai đổ thẳng vào Delivery trong dưới 1 phút. Đường đứt xám: vòng feedback dùng để tinh chỉnh prompt qua thời gian.</figcaption>
+
+      <div class="legend">
+        <div class="legend-item"><span class="swatch teal"></span> Luồng chính (batch/digest)</div>
+        <div class="legend-item"><span class="swatch dashed amber"></span> Bypass LLM/batch — alert, &lt;1 phút</div>
+        <div class="legend-item"><span class="swatch dashed grey"></span> Feedback loop</div>
+        <div class="legend-item"><span class="tag-ai">AI</span> Xử lý bằng Haiku 4.5 (tốn token)</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Chi tiết từng bước</h2>
+    <div class="panel table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Bước</th>
+            <th>Xử lý bởi</th>
+            <th>Input</th>
+            <th>Output</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-name">Extract</td>
+            <td>news-extractor (trafilatura)</td>
+            <td class="mono">1 URL</td>
+            <td class="mono">title, author, published_at, lang, canonical_url, body_text, word_count</td>
+          </tr>
+          <tr>
+            <td class="col-name">Dedupe</td>
+            <td>Code logic (canonical URL → SimHash)</td>
+            <td class="mono">canonical_url, body_text</td>
+            <td>Match / không match với bài đã có</td>
+          </tr>
+          <tr>
+            <td class="col-name">Triage</td>
+            <td>Haiku 4.5 · Batch API</td>
+            <td class="mono">title + 1200 từ đầu + tên nguồn</td>
+            <td class="mono">verdict, topics, brands, content_type, confidence</td>
+          </tr>
+          <tr>
+            <td class="col-name">Event clustering</td>
+            <td>Haiku 4.5 · 1 call/ngày</td>
+            <td class="mono">{article_id, title, source, first_seen_at} × 72h</td>
+            <td class="mono">article_ids[], title_canonical</td>
+          </tr>
+          <tr>
+            <td class="col-name">Deep analysis</td>
+            <td>Haiku 4.5 · Messages API realtime</td>
+            <td>2-3 bài đại diện của 1 event</td>
+            <td class="mono">summary_vi, why_it_matters, recommended_action[]</td>
+          </tr>
+          <tr>
+            <td class="col-name">Ranking</td>
+            <td>Code logic (rank_score)</td>
+            <td>Mọi event trong ngày + kết quả LLM</td>
+            <td>Top 5 event đã sắp hạng</td>
+          </tr>
+          <tr>
+            <td class="col-name">Delivery</td>
+            <td>n8n → Zalo KHub / Telegram</td>
+            <td>Top 5 event + nội dung deep analysis</td>
+            <td class="mono">news.digests (payload jsonb)</td>
+          </tr>
+          <tr>
+            <td class="col-name">Feedback</td>
+            <td>Người dùng bấm rating trên Zalo</td>
+            <td>Digest đã gửi</td>
+            <td class="mono">news.feedback (rating -1/0/1/2)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cập nhật vận hành gần nhất</h2>
+    <div class="notes">
+      <div class="note-row">
+        <span class="note-ref">§13</span>
+        <span>"Dev nội bộ" phụ trách Track A + B chưa map vào ai trong 5 nhân sự — cần chốt trước khi commit timeline.</span>
+      </div>
+      <div class="note-row">
+        <span class="note-ref">§10</span>
+        <span>Đề xuất chạy digest thô (bỏ SimHash tầng 2 + event clustering) song song Track A ở tuần 1-2, để test sớm giả thuyết rủi ro lớn nhất: "digest bị bỏ đọc".</span>
+      </div>
+      <div class="note-row">
+        <span class="note-ref">§6.5</span>
+        <span>Event clustering fail toàn bộ (không phải per-article) → fallback gửi digest không group, <span class="mono">event_id = null</span>, không được để mất digest cả ngày.</span>
+      </div>
+      <div class="note-row">
+        <span class="note-ref">§12</span>
+        <span>Thêm rủi ro "pipeline tự fail" (container crash, mất kết nối DB) khác với nguồn chết — cần healthcheck alert độc lập, không phụ thuộc n8n workflow đang lỗi.</span>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top: 14px;">
+      <strong>Đang chờ xác nhận, chưa áp dụng vào file:</strong> cap độ dài input cho Deep analysis (§6.3) — đề xuất 1500 từ cho nguồn <span class="mono">lang ∈ {en, vi}</span>, 800-1000 ký tự cho nguồn <span class="mono">lang = zh</span> (đơn vị "từ" không tương thích với tiếng Trung không tách từ theo khoảng trắng).
+    </div>
+  </section>
+
+  <footer>
+    KNX News Intelligence Agent — bản kế hoạch v1.1 · Trạng thái: draft, chờ review dev nội bộ · Sơ đồ tổng hợp từ knx-news-agent-plan.md
+  </footer>
+
+</div>
