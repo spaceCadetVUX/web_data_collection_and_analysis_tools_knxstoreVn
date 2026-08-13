@@ -41,27 +41,40 @@ FROM (
 """
 
 
-def _run_crawl_and_import(registry_key: str, crawl_script: str, csv_name: str) -> tuple[bool, str]:
+def _run_tracked(cmd: list[str], process_registry: dict | None) -> subprocess.CompletedProcess:
+    """subprocess.run tương đương, nhưng lưu Popen vào process_registry để /stop terminate được
+    giữa lúc đang chạy (chủ yếu dùng cho crawl KNX — mất 15-20 phút)."""
+    proc = subprocess.Popen(
+        cmd, cwd=str(SRC_DIR), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    if process_registry is not None:
+        process_registry["proc"] = proc
+    stdout, _ = proc.communicate()
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout=stdout)
+
+
+def _run_crawl_and_import(
+    registry_key: str, crawl_script: str, csv_name: str, process_registry: dict | None = None
+) -> tuple[bool, str]:
     """Chạy crawler + import_and_diff.py cho 1 registry_key. Trả về (ok, log_text)."""
     csv_path = DATA_DIR / csv_name
     log = []
 
-    crawl = subprocess.run(
-        [sys.executable, str(SRC_DIR / crawl_script), "--output", str(csv_path)],
-        cwd=str(SRC_DIR), capture_output=True, text=True,
+    crawl = _run_tracked(
+        [sys.executable, str(SRC_DIR / crawl_script), "--output", str(csv_path)], process_registry
     )
-    log.append(f"--- {registry_key} crawl ---\n{crawl.stdout}\n{crawl.stderr}")
+    log.append(f"--- {registry_key} crawl ---\n{crawl.stdout}")
     if crawl.returncode != 0:
         return False, "\n".join(log)
 
-    imp = subprocess.run(
+    imp = _run_tracked(
         [
             sys.executable, str(SRC_DIR / "import_and_diff.py"),
             "--db-url", DB_URL, "--csv", str(csv_path), "--registry-key", registry_key,
         ],
-        cwd=str(SRC_DIR), capture_output=True, text=True,
+        process_registry,
     )
-    log.append(f"--- {registry_key} import ---\n{imp.stdout}\n{imp.stderr}")
+    log.append(f"--- {registry_key} import ---\n{imp.stdout}")
     return imp.returncode == 0, "\n".join(log)
 
 
@@ -98,24 +111,40 @@ def format_message(device_count: int, devices: list[dict]) -> str:
     return "\n".join(lines).strip()
 
 
-def run_full_pipeline(trigger_type: str = "manual") -> dict:
+def run_full_pipeline(
+    trigger_type: str = "manual", stop_event=None, process_registry: dict | None = None
+) -> dict:
     """Chạy toàn bộ: crawl + import (KNX, Matter) -> query diff -> format -> gửi Zalo.
-    Luôn ghi 1 dòng vào registry.digest_log, kể cả khi crawl fail — không để "chết âm thầm".
+    Luôn ghi 1 dòng vào registry.digest_log, kể cả khi crawl fail hoặc bị dừng tay — không
+    để "chết âm thầm". stop_event (threading.Event) cho phép /stop ngắt giữa các bước; nếu
+    ngắt ngay giữa lúc crawl đang chạy, process_registry["proc"].terminate() làm crawl thoát
+    sớm (return code != 0), _run_crawl_and_import trả về False như crawl fail bình thường.
     """
     started = time.monotonic()
     crawl_logs = []
+    stopped = False
 
-    knx_ok, knx_log = _run_crawl_and_import("knx", "crawl_knx_devices.py", "_weekly_knx.csv")
-    crawl_logs.append(knx_log)
-    matter_ok, matter_log = _run_crawl_and_import(
-        "matter_csa", "crawl_matter_devices.py", "_weekly_matter.csv"
+    knx_ok, knx_log = _run_crawl_and_import(
+        "knx", "crawl_knx_devices.py", "_weekly_knx.csv", process_registry
     )
-    crawl_logs.append(matter_log)
+    crawl_logs.append(knx_log)
+
+    if stop_event is not None and stop_event.is_set():
+        stopped, matter_ok = True, False
+    else:
+        matter_ok, matter_log = _run_crawl_and_import(
+            "matter_csa", "crawl_matter_devices.py", "_weekly_matter.csv", process_registry
+        )
+        crawl_logs.append(matter_log)
+        if stop_event is not None and stop_event.is_set():
+            stopped = True
 
     device_count, devices, message = None, None, None
     send_ok, send_error = False, None
 
-    if knx_ok and matter_ok:
+    if stopped:
+        send_error = "stopped_by_user"
+    elif knx_ok and matter_ok:
         device_count, devices = query_diff()
         message = format_message(device_count, devices)
         send_ok, send_error = send_to_khub(message)
@@ -139,6 +168,7 @@ def run_full_pipeline(trigger_type: str = "manual") -> dict:
     return {
         "knx_ok": knx_ok,
         "matter_ok": matter_ok,
+        "stopped": stopped,
         "device_count": device_count,
         "message": message,
         "send_status": status,
