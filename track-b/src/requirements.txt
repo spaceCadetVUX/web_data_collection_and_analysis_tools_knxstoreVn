@@ -1,0 +1,5 @@
+requests
+beautifulsoup4
+trafilatura
+lxml_html_clean
+psycopg2-binary

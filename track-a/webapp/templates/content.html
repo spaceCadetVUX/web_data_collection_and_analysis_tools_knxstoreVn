@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Track B — Content (crawl blog)</h1>
+<p class="muted" style="margin-top: -0.75rem; margin-bottom: 1.25rem">
+  Crawl bài viết blog/content từ 35 nguồn đã seed (news.sources). Khác với crawl sản phẩm
+  KNX/Matter (Dashboard, Track A) — 2 luồng crawl hoàn toàn riêng, chỉ chung Postgres.
+  Tổng cộng <strong>{{ total_articles }}</strong> bài đã lưu.
+</p>
+
+<div class="card">
+  <div class="row">
+    <form method="post" action="/content/trigger-full" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
+      <button type="submit" {% if content_state.running %}disabled{% endif %}>
+        {% if content_state.running %}⏳ Đang chạy...{% else %}▶ Fetch toàn bộ{% endif %}
+      </button>
+    </form>
+    <form method="post" action="/content/trigger-latest" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
+      <button type="submit" class="secondary" {% if content_state.running %}disabled{% endif %}>
+        {% if content_state.running %}⏳ Đang chạy...{% else %}⚡ Fetch bài mới nhất{% endif %}
+      </button>
+    </form>
+    {% if content_state.running %}
+    <form method="post" action="/content/stop" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Đang dừng...';">
+      <button type="submit" class="secondary">⏹ Dừng</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="muted" style="margin-top: 0.6rem">
+    <strong>Fetch toàn bộ</strong>: lật tối đa <strong>{{ content_settings.full_fetch_max_pages }} trang</strong>
+    listing mỗi nguồn (tính từ trang mới nhất), tối đa 1000 bài mới/nguồn — nguồn nào không
+    có nhiều trang thật thì tự dừng sớm (404 hoặc hết link mới), không phải lỗi.<br>
+    <strong>Fetch bài mới nhất</strong>: luôn chỉ 1 trang, tối đa 3 bài mới/nguồn — nhanh, an
+    toàn chạy thường xuyên để check có bài mới không.<br>
+    Cả 2 đều bỏ qua nguồn <code>requires_js=true</code> (hiện chỉ Android Central — cần
+    Playwright/B6, chưa build).
+  </p>
+
+  <form method="post" action="/content/settings/max-pages" class="row" style="margin-top: 0.75rem">
+    <label class="muted" for="full_fetch_max_pages">Số trang lật khi "Fetch toàn bộ":</label>
+    <input type="number" id="full_fetch_max_pages" name="full_fetch_max_pages" min="1" max="50"
+           value="{{ content_settings.full_fetch_max_pages }}" style="width: 5rem">
+    <button type="submit" class="secondary">Lưu</button>
+  </form>
+
+  {% if content_state.running %}
+    <p class="muted">Bắt đầu lúc {{ content_state.started_at }}</p>
+    <p id="progress-text" class="muted">Đang khởi động...</p>
+  {% elif content_state.error %}
+    <p><span class="badge failed">lỗi</span> {{ content_state.error }}</p>
+  {% elif content_state.result %}
+    <p class="muted">
+      Lần chạy gần nhất ({{ content_state.result.mode }}): {{ content_state.result.new_count }} bài mới,
+      <span class="badge {{ 'ok' if content_state.result.ok else 'failed' }}">{{ 'ok' if content_state.result.ok else 'failed' }}</span>,
+      {{ (content_state.result.duration_ms / 1000) | round(1) }}s
+    </p>
+  {% endif %}
+
+  <details class="section" {% if content_state.running %}open{% endif %}>
+    <summary>Console log</summary>
+    <pre id="console-box" style="background: #1a1d24; color: #c9d1d9; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.8rem; max-height: 320px; overflow-y: auto; white-space: pre-wrap; margin-top: 0.75rem">{% if content_state.progress.log %}{{ content_state.progress.log | join("\n") }}{% else %}(chưa có log){% endif %}</pre>
+  </details>
+
+  <script>
+    async function pollContentStatus() {
+      const res = await fetch("/content/status");
+      const s = await res.json();
+      const p = s.progress || {};
+      const box = document.getElementById("console-box");
+      if (box && p.log) {
+        const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 10;
+        box.textContent = p.log.join("\n");
+        if (atBottom) box.scrollTop = box.scrollHeight;
+      }
+      if (!s.running) {
+        if (document.getElementById("progress-text")) location.reload();
+        return;
+      }
+      const text = document.getElementById("progress-text");
+      if (p.phase && text) {
+        let msg = p.phase;
+        if (p.current != null) msg += ` — ${p.current} bài mới`;
+        text.textContent = msg;
+      }
+      setTimeout(pollContentStatus, 2000);
+    }
+    pollContentStatus();
+  </script>
+</div>
+
+<h2>Nguồn ({{ source_rows | length }})</h2>
+<div class="card">
+  <table>
+    <tr><th>Slug</th><th>Kind</th><th>Tier</th><th>Active</th><th>Bài đã lưu</th><th>Lần fetch cuối</th><th>Lỗi liên tiếp</th></tr>
+    {% for s in source_rows %}
+    <tr>
+      <td>{{ s.slug }}{% if s.requires_js %} <span class="badge skipped">JS</span>{% endif %}</td>
+      <td class="muted">{{ s.kind }}</td>
+      <td class="muted">{{ s.tier }}</td>
+      <td><span class="badge {{ 'active' if s.enabled else 'failed' }}">{{ "bật" if s.enabled else "tắt" }}</span></td>
+      <td>{{ s.article_count }}</td>
+      <td class="muted">{{ s.last_attempt_at or "-" }}</td>
+      <td>
+        {% if s.consecutive_failures and s.consecutive_failures >= 3 %}
+          <span class="badge failed">{{ s.consecutive_failures }}</span>
+        {% else %}
+          {{ s.consecutive_failures or 0 }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Fetch gần nhất</h2>
+<div class="card">
+  <table>
+    <tr><th>Nguồn</th><th>Chạy lúc</th><th>HTTP</th><th>Ứng viên</th><th>Mới</th><th>Duration</th><th>Lỗi</th></tr>
+    {% for f in fetch_rows %}
+    <tr>
+      <td>{{ f.slug }}</td>
+      <td>{{ f.fetched_at }}</td>
+      <td class="muted">{{ f.http_status or "-" }}</td>
+      <td>{{ f.item_count }}</td>
+      <td>{{ f.new_count }}</td>
+      <td class="muted">{{ f.duration_ms }} ms</td>
+      <td class="muted">{{ f.error or "" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

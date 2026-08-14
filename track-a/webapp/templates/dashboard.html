@@ -91,13 +91,24 @@
       <td>{{ r.registry_key }}</td>
       <td class="muted">{{ r.crawl_mode }}</td>
       <td>{{ r.run_at }}</td>
-      <td>{{ r.item_count }}</td>
+      <td>
+        {{ r.item_count }}
+        {% if r.crawl_mode == "incremental" %}<span class="muted">(đã quét, không phải tổng registry)</span>{% endif %}
+      </td>
       <td>{{ r.new_count }}</td>
-      <td>{{ r.removed_count }}</td>
+      <td>
+        {{ r.removed_count }}
+        {% if r.crawl_mode == "incremental" %}<span class="muted">(không phát hiện được ở mode này)</span>{% endif %}
+      </td>
       <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
     </tr>
     {% endfor %}
   </table>
+  <p class="muted" style="margin-top: 0.6rem">
+    Mode <strong>incremental</strong>: cột Item = số thiết bị đã quét qua (2 trang an toàn,
+    không phải tổng số sản phẩm KNX/Matter thật — xem Products để biết tổng số thật).
+    Cột Gỡ luôn = 0 vì mode này không đủ dữ liệu để phát hiện thiết bị bị gỡ (chỉ full crawl mới làm được).
+  </p>
 </div>
 
 <h2>Digest gần nhất</h2>
