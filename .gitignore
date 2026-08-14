@@ -6,3 +6,5 @@ track-a/src/crawl_full.log
 track-a/src/.env
 track-a/src/logs/
 track-a/data/_weekly_*.csv
+track-a/data/_incremental_knx*.csv
+track-a/data/_incremental_knx_known_ids.txt

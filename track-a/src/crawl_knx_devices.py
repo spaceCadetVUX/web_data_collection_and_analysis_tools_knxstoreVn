@@ -78,10 +78,26 @@ def main():
     parser.add_argument("--start-page", type=int, default=0, help="Trang bắt đầu (0-indexed, để resume)")
     parser.add_argument("--delay", type=float, default=1.0, help="Giây nghỉ giữa mỗi request")
     parser.add_argument("--append", action="store_true", help="Ghi nối vào CSV có sẵn thay vì ghi đè")
+    parser.add_argument("--known-ids-file", default=None,
+                         help="File text, mỗi dòng 1 external_id đã có trong DB. Bật chế độ "
+                              "incremental: trang danh sách sắp xếp mới nhất trước, nên dừng "
+                              "sớm khi gặp đủ --stable-pages-to-stop trang liên tiếp không có "
+                              "thiết bị nào ngoài known-ids — không cần crawl hết 848 trang chỉ "
+                              "để tìm thiết bị mới.")
+    parser.add_argument("--stable-pages-to-stop", type=int, default=2,
+                         help="Số trang liên tiếp toàn thiết bị đã biết trước khi dừng (chỉ dùng "
+                              "cùng --known-ids-file). Mặc định 2 để có biên an toàn.")
     args = parser.parse_args()
 
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
+
+    known_ids = None
+    if args.known_ids_file:
+        with open(args.known_ids_file, encoding="utf-8") as f:
+            known_ids = {line.strip() for line in f if line.strip()}
+        print(f"Chế độ incremental: {len(known_ids)} external_id đã biết, dừng sau "
+              f"{args.stable_pages_to_stop} trang liên tiếp không có thiết bị mới.")
 
     mode = "a" if args.append else "w"
     write_header = not (args.append)
@@ -95,6 +111,7 @@ def main():
         total_results = None
         total_pages = None
         collected = 0
+        stable_streak = 0
 
         while True:
             if args.max_pages is not None and (page - args.start_page) >= args.max_pages:
@@ -116,7 +133,22 @@ def main():
 
             devices = parse_cards(html)
             if not devices:
-                print(f"Trang {page} không có thiết bị nào — có thể đã hết trang, dừng lại.")
+                if total_pages is not None and page < total_pages - 1:
+                    # Trang rỗng NHƯNG chưa đạt số trang ước tính — khả năng cao là lỗi tạm
+                    # thời (site trả HTML lỗi/rỗng 1 nhịp) chứ không phải hết trang thật. Nếu
+                    # coi đây là "xong" và trả về returncode=0, import_and_diff.py sẽ đánh dấu
+                    # TOÀN BỘ thiết bị chưa crawl tới (có thể hàng nghìn) là 'removed' — sự cố
+                    # thật đã xảy ra 2026-08-14: 186 thiết bị GIRA/MDT/ABB/Schneider/Siemens bị
+                    # đánh dấu removed sai chỉ vì 1 trang giữa chừng rỗng bất thường. Thoát với
+                    # exit code khác 0 để _run_tracked coi là fail, KHÔNG chạy import.
+                    print(f"LỖI ở trang {page}: trang rỗng nhưng mới đạt {page}/{total_pages} "
+                          f"trang ước tính — nghi site trả lỗi tạm thời, KHÔNG phải hết trang "
+                          f"thật. Dừng lại, không ghi 'đã xong' để tránh import đánh dấu nhầm "
+                          f"phần chưa crawl là removed. Chạy lại với --start-page {page} để tiếp tục.",
+                          file=sys.stderr)
+                    sys.exit(1)
+                print(f"Trang {page} không có thiết bị nào — đã đạt/vượt {total_pages or '?'} "
+                      f"trang ước tính, đúng là hết trang thật, dừng lại.")
                 break
 
             now = datetime.now(timezone.utc).isoformat()
@@ -128,6 +160,20 @@ def main():
             collected += len(devices)
             if page % 20 == 0:
                 print(f"Trang {page}: +{len(devices)} thiết bị (tổng đã crawl: {collected})")
+
+            if known_ids is not None:
+                new_on_page = [d for d in devices if d["external_id"] not in known_ids]
+                if new_on_page:
+                    stable_streak = 0
+                    print(f"Trang {page}: {len(new_on_page)} thiết bị MỚI "
+                          f"({', '.join(d['external_id'] for d in new_on_page[:5])}"
+                          f"{'...' if len(new_on_page) > 5 else ''})")
+                else:
+                    stable_streak += 1
+                    if stable_streak >= args.stable_pages_to_stop:
+                        print(f"Đủ {stable_streak} trang liên tiếp không có thiết bị mới — "
+                              f"dừng ở trang {page} (incremental).")
+                        break
 
             if total_pages is not None and page >= total_pages - 1:
                 print(f"Đã crawl hết {total_pages} trang.")

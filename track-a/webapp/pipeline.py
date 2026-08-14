@@ -55,6 +55,20 @@ def _set_progress(progress: dict | None, **kwargs):
         progress.update(kwargs)
 
 
+_MAX_LOG_LINES = 500
+
+
+def _append_log(progress: dict | None, line: str):
+    """Ghi từng dòng stdout thô vào progress["log"] để dashboard hiển thị console live
+    (khác _set_progress chỉ lưu số % đã parse) — xem yêu cầu thêm cửa sổ xem log 2026-08-14."""
+    if progress is None:
+        return
+    log = progress.setdefault("log", [])
+    log.append(line.rstrip("\n"))
+    if len(log) > _MAX_LOG_LINES:
+        del log[: len(log) - _MAX_LOG_LINES]
+
+
 def _run_tracked(
     cmd: list[str], process_registry: dict | None, on_line=None
 ) -> subprocess.CompletedProcess:
@@ -89,6 +103,7 @@ def _run_crawl_and_import(
     label = REGISTRY_LABELS.get(registry_key, registry_key)
 
     def _on_crawl_line(line: str):
+        _append_log(progress, line)
         if m := _RE_KNX_TOTAL.search(line):
             _set_progress(progress, phase=f"Crawl {label}", current=0, total=int(m.group(1)), percent=0)
         elif m := _RE_KNX_PROGRESS.search(line):
@@ -102,24 +117,122 @@ def _run_crawl_and_import(
             _set_progress(progress, phase=f"Crawl {label} — model", current=int(m.group(1)), total=None, percent=None)
 
     _set_progress(progress, phase=f"Crawl {label}", current=0, total=None, percent=None)
+    _append_log(progress, f"=== Crawl {label} ({crawl_script}) ===")
     crawl = _run_tracked(
-        [sys.executable, str(SRC_DIR / crawl_script), "--output", str(csv_path)],
+        [sys.executable, "-u", str(SRC_DIR / crawl_script), "--output", str(csv_path)],
         process_registry, on_line=_on_crawl_line,
     )
     log.append(f"--- {registry_key} crawl ---\n{crawl.stdout}")
     if crawl.returncode != 0:
+        _append_log(progress, f"=== Crawl {label} thoát với returncode {crawl.returncode} ===")
         return False, "\n".join(log)
 
     _set_progress(progress, phase=f"Import {label} vào Postgres", current=None, total=None, percent=None)
+    _append_log(progress, f"=== Import {label} vào Postgres ===")
     imp = _run_tracked(
         [
-            sys.executable, str(SRC_DIR / "import_and_diff.py"),
+            sys.executable, "-u", str(SRC_DIR / "import_and_diff.py"),
             "--db-url", DB_URL, "--csv", str(csv_path), "--registry-key", registry_key,
         ],
-        process_registry,
+        process_registry, on_line=lambda line: _append_log(progress, line),
     )
     log.append(f"--- {registry_key} import ---\n{imp.stdout}")
     return imp.returncode == 0, "\n".join(log)
+
+
+def _run_incremental_knx(process_registry: dict | None = None, progress: dict | None = None) -> tuple[bool, str]:
+    """Crawl nhanh: chỉ KNX, chỉ tìm thiết bị MỚI — trang danh sách knx.org/devices sắp xếp
+    mới nhất trước (verify thủ công 2026-08-14: 2 thiết bị mới nằm ở vị trí #1, #2 của trang
+    0, chưa từng có trong baseline hôm trước), nên dừng ngay khi gặp đủ N trang liên tiếp
+    toàn thiết bị đã biết thay vì quét hết 848 trang. Vài giây tới vài chục giây thay vì
+    15-20 phút của full crawl.
+
+    KHÔNG phát hiện được thiết bị bị gỡ khỏi registry (decertified) — vì chỉ thấy 1 phần nhỏ
+    của registry, không đủ để suy ra thiết bị nào đã biến mất. Cần chạy full crawl
+    (run_full_pipeline) định kỳ riêng cho việc đó."""
+    log = []
+    csv_path = DATA_DIR / "_incremental_knx.csv"
+    known_ids_path = DATA_DIR / "_incremental_knx_known_ids.txt"
+
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM registry.devices WHERE registry_key = 'knx' AND status = 'active'"
+        )
+        known_ids = [r["external_id"] for r in cur.fetchall()]
+    known_ids_path.write_text("\n".join(known_ids), encoding="utf-8")
+
+    _set_progress(progress, phase="Crawl KNX (mới nhất)", current=0, total=None, percent=None)
+    _append_log(progress, f"=== Crawl KNX incremental — {len(known_ids)} thiết bị đã biết trong DB ===")
+    crawl = _run_tracked(
+        [
+            sys.executable, "-u", str(SRC_DIR / "crawl_knx_devices.py"),
+            "--output", str(csv_path), "--known-ids-file", str(known_ids_path),
+        ],
+        process_registry, on_line=lambda line: _append_log(progress, line),
+    )
+    log.append(f"--- knx incremental crawl ---\n{crawl.stdout}")
+    known_ids_path.unlink(missing_ok=True)
+    if crawl.returncode != 0:
+        _append_log(progress, f"=== Crawl KNX incremental thoát với returncode {crawl.returncode} ===")
+        return False, "\n".join(log)
+
+    _set_progress(progress, phase="Import KNX (mới nhất) vào Postgres", current=None, total=None, percent=None)
+    _append_log(progress, "=== Import KNX (mới nhất) vào Postgres ===")
+    imp = _run_tracked(
+        [
+            sys.executable, "-u", str(SRC_DIR / "import_and_diff.py"),
+            "--db-url", DB_URL, "--csv", str(csv_path), "--registry-key", "knx", "--incremental",
+        ],
+        process_registry, on_line=lambda line: _append_log(progress, line),
+    )
+    log.append(f"--- knx incremental import ---\n{imp.stdout}")
+    return imp.returncode == 0, "\n".join(log)
+
+
+def run_incremental_pipeline(
+    trigger_type: str = "manual",
+    process_registry: dict | None = None,
+    progress: dict | None = None,
+) -> dict:
+    """Bản rút gọn của run_full_pipeline: chỉ crawl KNX incremental (xem _run_incremental_knx),
+    KHÔNG đụng tới Matter, rồi vẫn tính diff + gửi Zalo như bình thường nếu có thiết bị mới
+    khớp brands_of_interest. Dùng cho check thường xuyên (hàng ngày) — rẻ, nhanh; full crawl
+    (run_full_pipeline) vẫn cần chạy định kỳ (vd. hàng tháng) để bắt thiết bị bị gỡ + Matter."""
+    started = time.monotonic()
+    knx_ok, knx_log = _run_incremental_knx(process_registry, progress)
+
+    device_count, devices, message = None, None, None
+    send_ok, send_error = False, None
+
+    if knx_ok:
+        _set_progress(progress, phase="Tính diff", current=None, total=None, percent=None)
+        device_count, devices = query_diff()
+        message = format_message(device_count, devices)
+        _set_progress(progress, phase="Gửi Zalo", current=None, total=None, percent=None)
+        send_ok, send_error = send_to_khub(message)
+    else:
+        send_error = "crawl_or_import_failed"
+
+    _set_progress(progress, phase="Hoàn tất", current=None, total=None, percent=100)
+    duration_ms = int((time.monotonic() - started) * 1000)
+    status = "ok" if send_ok else ("failed" if send_error != "skipped_no_credential" else "skipped_no_credential")
+
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO registry.digest_log
+                (trigger_type, device_count, message, send_status, error, duration_ms, pipeline_mode)
+            VALUES (%s, %s, %s, %s, %s, %s, 'incremental')
+            """,
+            (trigger_type, device_count, message, status, send_error, duration_ms),
+        )
+        conn.commit()
+
+    return {
+        "knx_ok": knx_ok, "matter_ok": None, "stopped": False,
+        "device_count": device_count, "message": message, "send_status": status,
+        "duration_ms": duration_ms, "crawl_log_text": knx_log,
+    }
 
 
 def query_diff() -> tuple[int, list[dict]]:

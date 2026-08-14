@@ -19,29 +19,78 @@
   <p class="muted" style="margin-top: 0.75rem">Lịch chỉ chạy khi webapp đang mở/chạy nền — không phải cron OS-level.</p>
 </div>
 
-<h2>Brands quan tâm ({{ brands | length }})</h2>
-<div class="card">
-  <table>
-    <tr><th>Brand</th><th>Aliases</th><th>Active</th><th></th></tr>
-    {% for b in brands %}
-    <tr>
-      <td>{{ b.brand }}</td>
-      <td class="muted">{{ (b.aliases or []) | join(", ") }}</td>
-      <td><span class="badge {{ 'active' if b.is_active else 'failed' }}">{{ "bật" if b.is_active else "tắt" }}</span></td>
-      <td>
-        <form method="post" action="/settings/brands/{{ b.id }}/toggle">
-          <button type="submit" class="secondary">{{ "Tắt" if b.is_active else "Bật" }}</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
+<details class="section">
+  <summary>Brands quan tâm ({{ brands | length }})</summary>
+  <div class="card">
+    <table>
+      <tr><th>Brand</th><th>Aliases</th><th>Active</th><th></th></tr>
+      {% for b in brands %}
+      <tr>
+        <td>{{ b.brand }}</td>
+        <td class="muted">{{ (b.aliases or []) | join(", ") }}</td>
+        <td><span class="badge {{ 'active' if b.is_active else 'failed' }}">{{ "bật" if b.is_active else "tắt" }}</span></td>
+        <td>
+          <form method="post" action="/settings/brands/{{ b.id }}/toggle">
+            <button type="submit" class="secondary">{{ "Tắt" if b.is_active else "Bật" }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
 
-  <h3>Thêm brand mới</h3>
-  <form method="post" action="/settings/brands/add" class="row">
-    <input type="text" name="brand" placeholder="Tên brand" required>
-    <input type="text" name="aliases" placeholder="Alias, phân cách bằng dấu phẩy" style="width: 18rem">
-    <button type="submit">Thêm</button>
-  </form>
-</div>
+    <h3>Thêm brand mới</h3>
+    <form method="post" action="/settings/brands/add" class="row">
+      <input type="text" name="brand" placeholder="Tên brand" required>
+      <input type="text" name="aliases" placeholder="Alias, phân cách bằng dấu phẩy" style="width: 18rem">
+      <button type="submit">Thêm</button>
+    </form>
+  </div>
+</details>
+
+<details class="section">
+  <summary>Nguồn crawl content — Track B ({{ news_sources | length }})</summary>
+  <div class="card">
+    <table>
+      <tr><th>Nguồn</th><th>Kind</th><th>Category</th><th>Tier</th><th>Active</th><th></th></tr>
+      {% for s in news_sources %}
+      <tr>
+        <td>
+          <a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.name }}</a>
+          {% if s.notes %}<div class="muted">{{ s.notes }}</div>{% endif %}
+        </td>
+        <td class="muted">{{ s.kind }}</td>
+        <td class="muted">{{ s.category }}</td>
+        <td class="muted">{{ s.tier }}</td>
+        <td><span class="badge {{ 'active' if s.enabled else 'failed' }}">{{ "bật" if s.enabled else "tắt" }}</span></td>
+        <td>
+          <form method="post" action="/settings/sources/{{ s.id }}/toggle">
+            <button type="submit" class="secondary">{{ "Tắt" if s.enabled else "Bật" }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Thêm nguồn mới</h3>
+    <form method="post" action="/settings/sources/add" class="row">
+      <input type="text" name="name" placeholder="Tên nguồn" required style="width: 16rem">
+      <input type="url" name="url" placeholder="https://..." required style="width: 20rem">
+      <select name="kind">
+        {% for k in source_kinds %}
+        <option value="{{ k }}" {% if k == "manual" %}selected{% endif %}>{{ k }}</option>
+        {% endfor %}
+      </select>
+      <select name="category">
+        {% for c in source_categories %}
+        <option value="{{ c }}" {% if c == "media" %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="lang" placeholder="lang (vd. en)" style="width: 6rem">
+      <input type="text" name="region" placeholder="region (vd. global)" style="width: 8rem">
+      <input type="number" name="tier" min="1" max="3" value="2" style="width: 4rem">
+      <input type="text" name="notes" placeholder="Ghi chú" style="width: 16rem">
+      <button type="submit">Thêm</button>
+    </form>
+  </div>
+</details>
 {% endblock %}

@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Track A — Registry Diff</h1>
+<h1>Track A — Registry Diff (crawl sản phẩm)</h1>
+<p class="muted" style="margin-top: -0.75rem; margin-bottom: 1.25rem">
+  Crawl thiết bị KNX/Matter certified (registry.devices). Khác với crawl blog/content (Track B,
+  xem mục "Nguồn crawl content" ở Settings) — 2 loại dữ liệu và 2 luồng crawl hoàn toàn riêng.
+</p>
 
 <div class="card">
   <div class="row">
     <form method="post" action="/trigger" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
       <button type="submit" {% if pipeline_state.running %}disabled{% endif %}>
-        {% if pipeline_state.running %}⏳ Đang chạy...{% else %}▶ Trigger now{% endif %}
+        {% if pipeline_state.running %}⏳ Đang chạy...{% else %}▶ Crawl sản phẩm — toàn bộ{% endif %}
+      </button>
+    </form>
+    <form method="post" action="/trigger-incremental" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '⏳ Đang chạy...';">
+      <button type="submit" class="secondary" {% if pipeline_state.running %}disabled{% endif %}>
+        {% if pipeline_state.running %}⏳ Đang chạy...{% else %}⚡ Crawl sản phẩm — mới nhất{% endif %}
       </button>
     </form>
     {% if pipeline_state.running %}
@@ -14,33 +23,19 @@
       <button type="submit" class="secondary">⏹ Dừng</button>
     </form>
     {% endif %}
-    <span class="muted">crawl KNX + Matter → import → diff → gửi Zalo (~15-20 phút)</span>
   </div>
+  <p class="muted" style="margin-top: 0.6rem">
+    <strong>Crawl sản phẩm — toàn bộ</strong>: KNX (848 trang) + Matter → import → diff → gửi Zalo (~15-20 phút).
+    Bắt được thiết bị bị gỡ khỏi registry — nên chạy định kỳ (vd. hàng tháng).<br>
+    <strong>Crawl sản phẩm — mới nhất</strong>: chỉ KNX, dừng ngay khi gặp thiết bị đã biết (trang danh
+    sách sắp xếp mới nhất trước) — vài giây tới vài chục giây. Không bắt được thiết bị bị gỡ,
+    không đụng tới Matter — dùng để check nhanh, thường xuyên.
+  </p>
 
   {% if pipeline_state.running %}
     <p class="muted">Bắt đầu lúc {{ pipeline_state.started_at }}</p>
     <p id="progress-text" class="muted">Đang khởi động...</p>
     <div class="progress-track"><div id="progress-fill" class="progress-fill" style="width: 0%"></div></div>
-    <script>
-      async function pollStatus() {
-        const res = await fetch("/status");
-        const s = await res.json();
-        if (!s.running) { location.reload(); return; }
-        const p = s.progress || {};
-        const text = document.getElementById("progress-text");
-        const fill = document.getElementById("progress-fill");
-        if (p.phase) {
-          let msg = p.phase;
-          if (p.current != null && p.total) msg += ` — ${p.current} / ${p.total}`;
-          else if (p.current != null) msg += ` — ${p.current}`;
-          if (p.percent != null) msg += ` (${p.percent}%)`;
-          text.textContent = msg;
-        }
-        fill.style.width = (p.percent != null ? p.percent : 0) + "%";
-        setTimeout(pollStatus, 2000);
-      }
-      pollStatus();
-    </script>
   {% elif pipeline_state.error %}
     <p><span class="badge failed">lỗi</span> {{ pipeline_state.error }}</p>
   {% elif pipeline_state.result %}
@@ -50,15 +45,51 @@
       {{ (pipeline_state.result.duration_ms / 1000) | round(1) }}s
     </p>
   {% endif %}
+
+  <details class="section" {% if pipeline_state.running %}open{% endif %}>
+    <summary>Console log</summary>
+    <pre id="console-box" style="background: #1a1d24; color: #c9d1d9; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.8rem; max-height: 320px; overflow-y: auto; white-space: pre-wrap; margin-top: 0.75rem">{% if pipeline_state.progress.log %}{{ pipeline_state.progress.log | join("\n") }}{% elif pipeline_state.result %}{{ pipeline_state.result.crawl_log_text }}{% else %}(chưa có log){% endif %}</pre>
+  </details>
+
+  <script>
+    async function pollStatus() {
+      const res = await fetch("/status");
+      const s = await res.json();
+      const p = s.progress || {};
+      const box = document.getElementById("console-box");
+      if (box && p.log) {
+        const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 10;
+        box.textContent = p.log.join("\n");
+        if (atBottom) box.scrollTop = box.scrollHeight;
+      }
+      if (!s.running) {
+        if (document.getElementById("progress-fill")) location.reload();
+        return;
+      }
+      const text = document.getElementById("progress-text");
+      const fill = document.getElementById("progress-fill");
+      if (p.phase && text) {
+        let msg = p.phase;
+        if (p.current != null && p.total) msg += ` — ${p.current} / ${p.total}`;
+        else if (p.current != null) msg += ` — ${p.current}`;
+        if (p.percent != null) msg += ` (${p.percent}%)`;
+        text.textContent = msg;
+      }
+      if (fill) fill.style.width = (p.percent != null ? p.percent : 0) + "%";
+      setTimeout(pollStatus, 2000);
+    }
+    pollStatus();
+  </script>
 </div>
 
 <h2>Crawl gần nhất</h2>
 <div class="card">
   <table>
-    <tr><th>Registry</th><th>Chạy lúc</th><th>Item</th><th>Mới</th><th>Gỡ</th><th>Status</th></tr>
+    <tr><th>Registry</th><th>Mode</th><th>Chạy lúc</th><th>Item</th><th>Mới</th><th>Gỡ</th><th>Status</th></tr>
     {% for r in crawl_rows %}
     <tr>
       <td>{{ r.registry_key }}</td>
+      <td class="muted">{{ r.crawl_mode }}</td>
       <td>{{ r.run_at }}</td>
       <td>{{ r.item_count }}</td>
       <td>{{ r.new_count }}</td>

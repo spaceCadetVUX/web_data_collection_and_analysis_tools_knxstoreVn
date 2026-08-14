@@ -81,6 +81,18 @@
       background: var(--accent); height: 100%; border-radius: 999px;
       transition: width 0.4s ease;
     }
+    details.section { margin: 2rem 0 1rem; }
+    details.section > summary {
+      font-size: 1.05rem; font-weight: 600; color: var(--text);
+      cursor: pointer; list-style: none; padding: 0.25rem 0;
+    }
+    details.section > summary::-webkit-details-marker { display: none; }
+    details.section > summary::before {
+      content: "▸"; display: inline-block; margin-right: 0.5rem;
+      color: var(--text-muted); transition: transform 0.15s ease;
+    }
+    details.section[open] > summary::before { transform: rotate(90deg); }
+    details.section > .card { margin-top: 0.75rem; }
   </style>
 </head>
 <body>

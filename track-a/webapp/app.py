@@ -1,6 +1,7 @@
 """Web app thay n8n cho Track A — dashboard, trigger, settings, logs."""
 from __future__ import annotations
 
+import re
 import threading
 from datetime import datetime
 
@@ -10,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from db import get_conn
-from pipeline import run_full_pipeline
+from pipeline import run_full_pipeline, run_incremental_pipeline
 
 app = FastAPI(title="Track A — Registry Diff")
 templates = Jinja2Templates(directory="templates")
@@ -49,12 +50,28 @@ def _run_pipeline_background(trigger_type: str):
         _process_registry["proc"] = None
 
 
+def _run_incremental_background(trigger_type: str):
+    try:
+        result = run_incremental_pipeline(
+            trigger_type=trigger_type,
+            process_registry=_process_registry,
+            progress=_pipeline_state["progress"],
+        )
+        _pipeline_state["result"] = result
+        _pipeline_state["error"] = None
+    except Exception as exc:  # noqa: BLE001 — như _run_pipeline_background, không để mất tích âm thầm
+        _pipeline_state["error"] = str(exc)
+    finally:
+        _pipeline_state["running"] = False
+        _process_registry["proc"] = None
+
+
 @app.get("/")
 def dashboard(request: Request):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT registry_key, run_at, item_count, new_count, removed_count, status, error
+            SELECT registry_key, run_at, item_count, new_count, removed_count, status, error, crawl_mode
             FROM registry.crawl_log
             WHERE registry_key IN ('knx', 'matter_csa')
             ORDER BY run_at DESC LIMIT 5
@@ -98,6 +115,23 @@ def trigger():
     return RedirectResponse("/", status_code=303)
 
 
+@app.post("/trigger-incremental")
+def trigger_incremental():
+    with _pipeline_lock:
+        if _pipeline_state["running"]:
+            return RedirectResponse("/", status_code=303)
+        _pipeline_state["running"] = True
+        _pipeline_state["started_at"] = datetime.now().isoformat()
+        _pipeline_state["result"] = None
+        _pipeline_state["error"] = None
+        _pipeline_state["progress"].clear()
+        _stop_event.clear()
+
+    thread = threading.Thread(target=_run_incremental_background, args=("manual",), daemon=True)
+    thread.start()
+    return RedirectResponse("/", status_code=303)
+
+
 @app.post("/stop")
 def stop():
     """Ngắt pipeline đang chạy — set cờ dừng + kill process con hiện tại (nếu đang crawl)
@@ -116,6 +150,14 @@ def status():
 
 
 WEEKDAY_LABELS = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"]
+SOURCE_KINDS = ["manual", "html_list", "rss", "atom", "sitemap", "json_api", "search_query", "registry"]
+SOURCE_CATEGORIES = ["media", "manufacturer", "distributor", "community", "standard_body", "registry", "social"]
+
+
+def _slugify(text: str) -> str:
+    slug = text.strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    return slug.strip("-")
 
 
 @app.get("/settings")
@@ -125,6 +167,8 @@ def settings_page(request: Request):
         settings = cur.fetchone()
         cur.execute("SELECT * FROM registry.brands_of_interest ORDER BY brand")
         brands = cur.fetchall()
+        cur.execute("SELECT * FROM news.sources ORDER BY category, name")
+        news_sources = cur.fetchall()
 
     return templates.TemplateResponse(
         "settings.html",
@@ -132,6 +176,9 @@ def settings_page(request: Request):
             "request": request,
             "settings": settings,
             "brands": brands,
+            "news_sources": news_sources,
+            "source_kinds": SOURCE_KINDS,
+            "source_categories": SOURCE_CATEGORIES,
             "weekday_labels": WEEKDAY_LABELS,
         },
     )
@@ -174,6 +221,42 @@ def toggle_brand(brand_id: int):
         cur.execute(
             "UPDATE registry.brands_of_interest SET is_active = NOT is_active WHERE id = %s",
             (brand_id,),
+        )
+        conn.commit()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/sources/add")
+def add_source(
+    name: str = Form(...),
+    url: str = Form(...),
+    kind: str = Form("manual"),
+    category: str = Form("media"),
+    lang: str = Form(""),
+    region: str = Form(""),
+    tier: int = Form(2),
+    notes: str = Form(""),
+):
+    slug = _slugify(name)
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO news.sources (slug, name, kind, url, lang, region, category, tier, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url) DO NOTHING
+            """,
+            (slug, name, kind, url, lang or None, region or None, category, tier, notes or None),
+        )
+        conn.commit()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/sources/{source_id}/toggle")
+def toggle_source(source_id: int):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE news.sources SET enabled = NOT enabled WHERE id = %s",
+            (source_id,),
         )
         conn.commit()
     return RedirectResponse("/settings", status_code=303)

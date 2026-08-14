@@ -22,3 +22,241 @@ INFO:     127.0.0.1:58864 - "GET /products?page=3&registry=&brand=&model=plug HT
 INFO:     127.0.0.1:58864 - "GET /products?page=4&registry=&brand=&model=plug HTTP/1.1" 200 OK
 INFO:     127.0.0.1:58864 - "GET /products?registry=&brand=&model=light HTTP/1.1" 200 OK
 INFO:     127.0.0.1:58874 - "GET /products?page=2&registry=&brand=&model=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59804 - "GET /products?registry=&brand=ADT&model=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59804 - "GET /products?registry=&brand=ADT&model=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59804 - "GET /products?registry=&brand=ADT&model= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60966 - "GET / HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/uvicorn/protocols/http/httptools_impl.py", line 415, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/applications.py", line 1138, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 121, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 107, in app
+    response = await f(request)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 426, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 316, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+  File "/Users/ngochuyen/Desktop/content-dạo/track-a/webapp/app.py", line 54, in dashboard
+    with get_conn() as conn, conn.cursor() as cur:
+  File "/Users/ngochuyen/Desktop/content-dạo/track-a/webapp/db.py", line 32, in get_conn
+    return psycopg2.connect(DB_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+INFO:     127.0.0.1:59909 - "GET / HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/uvicorn/protocols/http/httptools_impl.py", line 415, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/applications.py", line 1138, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 121, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 107, in app
+    response = await f(request)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 426, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/fastapi/routing.py", line 316, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+  File "/Users/ngochuyen/Desktop/content-dạo/track-a/webapp/app.py", line 54, in dashboard
+    with get_conn() as conn, conn.cursor() as cur:
+  File "/Users/ngochuyen/Desktop/content-dạo/track-a/webapp/db.py", line 32, in get_conn
+    return psycopg2.connect(DB_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+  File "/Users/ngochuyen/Library/Python/3.9/lib/python/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+INFO:     127.0.0.1:60625 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60629 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60649 - "POST /trigger HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60649 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60649 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60678 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60697 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60692 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60702 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60823 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60826 - "GET /settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /status HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42682]

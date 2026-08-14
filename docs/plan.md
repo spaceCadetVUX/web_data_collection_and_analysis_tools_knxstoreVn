@@ -42,11 +42,20 @@ Các mục trên chỉ mở khi đạt tiêu chí Go ở mục 10.
 
 ## 2. Kiến trúc
 
+**Cập nhật (2026-08-14): bỏ n8n khỏi kiến trúc Track B.** Quyết định giống Track A (xem
+`track-a/README.md` mục 0, A5 đã đổi từ n8n sang webapp riêng) — không phụ thuộc n8n
+production (`n8n.tungvu.vn`) mà nhóm không có quyền truy cập lúc build, và tránh phải học
+n8n để dựng workflow. Trigger chạy pipeline (fetch nguồn, chạy digest...) qua **UI webapp**
+(nút bấm, giống Dashboard Track A) hoặc **trực tiếp qua Claude/MCP connector** (gọi tay khi
+cần) — không cần orchestrator cron riêng ở giai đoạn này. Mọi chỗ nhắc "n8n" bên dưới trong
+tài liệu này (sơ đồ luồng, task B1, OrbStack networking, marketing bắt link) đã lỗi thời so
+với quyết định này, xem ghi chú tại từng chỗ.
+
 ### 2.1 Thành phần
 
 | Lớp | Công nghệ | Trạng thái |
 |---|---|---|
-| Orchestrator | n8n tại `n8n.tungvu.vn` | Đã có |
+| Orchestrator | ~~n8n~~ — Webapp (FastAPI, giống `track-a/webapp/`) + trigger tay qua Claude/MCP connector | **Cần viết**, không dùng n8n |
 | Storage | PostgreSQL pgvector:pg17, port 5433 | Đã có, thêm 3 schema mới |
 | Extract | Container `news-extractor` (FastAPI + trafilatura) | **Cần viết** |
 | Render fallback | Container `news-renderer` (Playwright) | **Cần viết**, chỉ khi cần |
@@ -66,7 +75,8 @@ Container mới: 2 bắt buộc (`news-extractor`, `wechat2rss`) + 1 tùy chọn
                     ┌─────────────────┐
                     │  news.sources   │
                     └────────┬────────┘
-                             │ n8n cron theo fetch_cron
+                             │ trigger tay (UI webapp / Claude connector) —
+                             │ KHÔNG qua n8n, xem ghi chú đầu mục 2
               ┌──────────────┼──────────────┐
               ▼              ▼              ▼
         RSS/Atom        Sitemap        HTML list
@@ -668,7 +678,9 @@ Không nhét chung với news:
 ```
 Tùng/Vũ thấy post hay trên XHS hoặc WeChat
   → share link vào Zalo group riêng
-  → n8n bắt link qua Zalo KHub
+  → bắt link qua Zalo KHub — CHƯA CHỐT cơ chế (trước đây định dùng n8n, nay bỏ; cần chọn
+    lại: webapp tự poll Zalo KHub API, hay qua Pancake MCP, hay Claude connector đọc trực
+    tiếp — xem ghi chú đầu mục 2)
   → screenshot + OCR (nội dung XHS chủ yếu là 图文)
   → Haiku phân tích: hook, cover style, title pattern, pain point
   → sinh brief tiếng Việt
@@ -692,7 +704,7 @@ WeChat 公众号 của hãng thì ngược lại: nội dung kỹ thuật chất
 
 | # | Vấn đề | Cách xử lý |
 |---|---|---|
-| 1 | Container cần chung network với Postgres 5433 và n8n | Dùng external network, không map port ra host. Nếu n8n đang gọi Postgres qua `host.docker.internal:5433` thì nên đưa về cùng network, gọi bằng service name port 5432 nội bộ |
+| 1 | ~~Container cần chung network với Postgres 5433 và n8n~~ — hết áp dụng, không còn n8n trong kiến trúc (xem ghi chú đầu mục 2). Container chỉ cần chung network với Postgres 5433 | Dùng external network, không map port ra host |
 | 2 | Wechat2RSS có thể chỉ có build amd64 | Khai báo `platform: linux/amd64`, chạy qua Rosetta. Workload nhẹ nên không ảnh hưởng hiệu năng |
 | 3 | Playwright trên ARM64 | Tách container riêng `news-renderer`, không nhồi vào image extractor (nặng ~1.5GB, mà 75 đến 85% nguồn không cần). Cần test tag image trước khi chốt |
 | 4 | Mac sleep làm miss cron | Kiểm tra `pmset -g \| grep sleep`. Cần `disablesleep 1`. OrbStack phải bật Start at login. Cân nhắc auto-login cho user `tungvu` |
@@ -728,12 +740,23 @@ Tổng thêm dưới 2 GB. Không cần đánh giá lại headroom của Mac Min
 
 ### Track B: News Pipeline
 
+**Cập nhật (2026-08-14) — B0 đã làm khác kế hoạch gốc:** thay vì `sources.yaml` trong git +
+loader script, `news.sources` (schema + bảng) được tạo trực tiếp bằng migration SQL
+(`track-a/migrations/0004_create_news_sources.sql`, `0005_seed_news_sources.sql`) chạy trên
+**Postgres dev của Track A** (registry-postgres, port 5433) — dùng chung 1 Postgres thay vì
+tách riêng, và quản lý bật/tắt/thêm nguồn qua UI có sẵn (`track-a/webapp/templates/
+settings.html`, mục "Nguồn crawl content — Track B") thay vì sửa file `sources.yaml` rồi
+redeploy. Đã seed **35 nguồn** (không phải 40) — xem `docs/sources-content-research.md` để
+biết danh sách gốc 54 URL đã test và lý do loại 19 URL (chết/chặn bot/redirect sai). 17/35
+nguồn `kind=html_list` chưa có `extract_rule` (selector rỗng) — cần bổ sung trước khi B1
+chạy được với nhóm này.
+
 | Sprint | Việc | Ước tính | Definition of Done |
 |---|---|---|---|
 | **B0** | Schema `news` + `marketing` + migration script | 4 đến 6h | Chạy được trên Postgres 5433, có rollback |
-| **B0** | `sources.yaml` seed 40 nguồn + loader | 6 đến 8h | Mọi nguồn có kind hợp lệ, đã test URL trả về dữ liệu |
+| **B0** | ~~`sources.yaml` seed 40 nguồn + loader~~ | 6 đến 8h | 🟡 Đã làm khác kế hoạch — xem ghi chú dưới bảng |
 | **B1** | Container `news-extractor` | 8 đến 12h | POST /extract trả đúng schema, fail rate < 20% trên 40 nguồn |
-| **B1** | n8n workflow fetch + ghi `fetch_log`, `source_health` | 6 đến 8h | Nguồn chết 3 lần liên tiếp gửi cảnh báo |
+| **B1** | ~~n8n workflow~~ Webapp fetch (trigger tay qua UI/Claude connector, giống Track A) + ghi `fetch_log`, `source_health` | 6 đến 8h | Nguồn chết 3 lần liên tiếp gửi cảnh báo |
 | **B2** | Dedupe tầng 1 (canonical URL) | 3 đến 4h | Test case: 20 URL có tracking param, gồm cả spm và WeChat param |
 | **B2** | Dedupe tầng 2 (SimHash + band index) | 6 đến 8h | Cùng bài crawl 2 lần cách 1h không tạo record mới |
 | **B3** | Tầng 1 triage qua Batch API + `batch_jobs` | 8 đến 10h | JSON parse rate > 95% trên 100 bài. Batch poll và retry hoạt động |
@@ -836,3 +859,4 @@ Chỉ mở scope ở mục 1.2 khi cả 7 chỉ số đạt.
 | Rủi ro model 8B với tiếng Trung | Có | Loại bỏ |
 | Ràng buộc RAM Mac Mini | Có, cần đánh giá | Không đáng kể |
 | Ước tính Track B | 67 đến 96h | 75 đến 106h |
+| Orchestrator (2026-08-14) | n8n (`n8n.tungvu.vn`) | Bỏ n8n — trigger tay qua UI webapp hoặc Claude/MCP connector, giống Track A |
