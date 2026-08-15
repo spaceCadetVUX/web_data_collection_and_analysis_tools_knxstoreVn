@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ device.brand }} — {{ device.model }}</h1>
+<p class="muted" style="margin-top: -0.75rem; margin-bottom: 1.25rem">
+  <a href="/products">← Quay lại Products</a>
+</p>
+
+<div class="card">
+  <table>
+    <tr><td class="muted">Registry</td><td>{{ device.registry_key }}</td></tr>
+    <tr><td class="muted">External ID</td><td class="muted">{{ device.external_id }}</td></tr>
+    <tr><td class="muted">Category</td><td>{{ device.category or "-" }}</td></tr>
+    <tr><td class="muted">Device type</td><td>{{ device.device_type or "-" }}</td></tr>
+    <tr><td class="muted">Cert date</td><td>{{ device.cert_date or "-" }}</td></tr>
+    <tr><td class="muted">First seen</td><td>{{ device.first_seen_at }}</td></tr>
+    <tr><td class="muted">Last seen</td><td>{{ device.last_seen_at }}</td></tr>
+    <tr><td class="muted">Status</td><td><span class="badge {{ 'active' if device.status == 'active' else 'failed' }}">{{ device.status }}</span></td></tr>
+    {% if device.attributes and device.attributes.source_url %}
+    <tr><td class="muted">Nguồn</td><td><a href="{{ device.attributes.source_url }}" target="_blank" rel="noopener">{{ device.attributes.source_url }}</a></td></tr>
+    {% endif %}
+  </table>
+</div>
+
+<h2>Attributes thô (jsonb)</h2>
+<div class="card">
+  <pre style="white-space: pre-wrap; font-size: 0.85rem">{{ device.attributes | tojson(indent=2) }}</pre>
+</div>
+
+<h2>Crawl gần nhất ({{ device.registry_key }})</h2>
+<div class="card">
+  <table>
+    <tr><th>Chạy lúc</th><th>Mode</th><th>Item</th><th>Mới</th><th>Gỡ</th><th>Status</th></tr>
+    {% for r in crawl_rows %}
+    <tr>
+      <td>{{ r.run_at }}</td>
+      <td class="muted">{{ r.crawl_mode }}</td>
+      <td>{{ r.item_count }}</td>
+      <td>{{ r.new_count }}</td>
+      <td>{{ r.removed_count }}</td>
+      <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

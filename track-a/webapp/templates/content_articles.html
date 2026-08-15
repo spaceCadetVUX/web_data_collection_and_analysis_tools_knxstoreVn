@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Lịch sử bài đã fetch ({{ total }})</h1>
+<p class="muted" style="margin-top: -0.75rem; margin-bottom: 1.25rem">
+  <a href="/content">← Quay lại Content (Track B)</a>
+</p>
+
+<div class="card">
+  <form method="get" action="/content/articles" class="row">
+    <select name="source_slug">
+      <option value="">Tất cả nguồn</option>
+      {% for slug in all_source_slugs %}
+      <option value="{{ slug }}" {% if selected_source_slug == slug %}selected{% endif %}>{{ slug }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="q" placeholder="Tìm theo tiêu đề..." value="{{ selected_q }}" style="width: 18rem">
+    <button type="submit">Lọc</button>
+    {% if selected_source_slug or selected_q %}
+    <a href="/content/articles"><button class="secondary" type="button">Xoá lọc</button></a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Tiêu đề</th><th>Nguồn</th><th>Đăng lúc</th><th>Crawl lúc</th><th>Từ</th><th>Status</th></tr>
+    {% for a in articles %}
+    <tr>
+      <td><a href="/content/articles/{{ a.id }}">{{ a.title or "(không có tiêu đề)" }}</a></td>
+      <td class="muted">{{ a.source_slug }}</td>
+      <td class="muted">{{ a.published_at or "-" }}</td>
+      <td class="muted">{{ a.first_seen_at }}</td>
+      <td>{{ a.word_count or 0 }}</td>
+      <td><span class="badge {{ 'active' if a.extract_status == 'ok' else 'failed' }}">{{ a.extract_status }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% set qs = "&source_slug=" + (selected_source_slug | urlencode) + "&q=" + (selected_q | urlencode) %}
+<div class="row" style="justify-content: center; margin-top: 1rem">
+  {% if page > 1 %}
+  <a href="/content/articles?page={{ page - 1 }}{{ qs }}"><button class="secondary" type="button">← Trước</button></a>
+  {% endif %}
+  <span class="muted">Trang {{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="/content/articles?page={{ page + 1 }}{{ qs }}"><button class="secondary" type="button">Sau →</button></a>
+  {% endif %}
+</div>
+{% endblock %}

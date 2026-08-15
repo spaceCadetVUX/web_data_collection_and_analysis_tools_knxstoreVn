@@ -403,6 +403,86 @@ def content_status():
     return _content_state
 
 
+ARTICLES_PAGE_SIZE = 30
+
+
+@app.get("/content/articles")
+def content_articles_page(request: Request, page: int = 1, source_slug: str = "", q: str = ""):
+    page = max(page, 1)
+    offset = (page - 1) * ARTICLES_PAGE_SIZE
+
+    where_clauses = []
+    params: list = []
+    if source_slug:
+        where_clauses.append("s.slug = %s")
+        params.append(source_slug)
+    if q:
+        where_clauses.append("a.title ILIKE %s")
+        params.append(f"%{q}%")
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"SELECT count(*) AS total FROM news.articles a JOIN news.sources s ON s.id = a.source_id {where_sql}",
+            params,
+        )
+        total = cur.fetchone()["total"]
+
+        cur.execute(
+            f"""
+            SELECT a.id, a.title, a.author, a.published_at, a.first_seen_at, a.word_count,
+                   a.extract_status, s.slug AS source_slug, s.tier
+            FROM news.articles a JOIN news.sources s ON s.id = a.source_id
+            {where_sql}
+            ORDER BY a.first_seen_at DESC
+            LIMIT %s OFFSET %s
+            """,
+            (*params, ARTICLES_PAGE_SIZE, offset),
+        )
+        articles = cur.fetchall()
+
+        cur.execute("SELECT slug FROM news.sources ORDER BY slug")
+        all_source_slugs = [r["slug"] for r in cur.fetchall()]
+
+    total_pages = max((total + ARTICLES_PAGE_SIZE - 1) // ARTICLES_PAGE_SIZE, 1)
+
+    return templates.TemplateResponse(
+        "content_articles.html",
+        {
+            "request": request,
+            "articles": articles,
+            "total": total,
+            "page": page,
+            "total_pages": total_pages,
+            "all_source_slugs": all_source_slugs,
+            "selected_source_slug": source_slug,
+            "selected_q": q,
+        },
+    )
+
+
+@app.get("/content/articles/{article_id}")
+def content_article_detail(request: Request, article_id: str):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT a.*, s.slug AS source_slug, s.name AS source_name, s.url AS source_url, s.tier
+            FROM news.articles a JOIN news.sources s ON s.id = a.source_id
+            WHERE a.id = %s
+            """,
+            (article_id,),
+        )
+        article = cur.fetchone()
+
+    if article is None:
+        return RedirectResponse("/content/articles", status_code=303)
+
+    return templates.TemplateResponse(
+        "content_article_detail.html",
+        {"request": request, "article": article},
+    )
+
+
 PRODUCTS_PAGE_SIZE = 50
 REGISTRY_KEYS = ["knx", "matter_csa", "dali"]
 
@@ -431,7 +511,7 @@ def products_page(request: Request, page: int = 1, registry: str = "", brand: st
 
         cur.execute(
             f"""
-            SELECT registry_key, brand, model, category, first_seen_at, status, attributes
+            SELECT registry_key, external_id, brand, model, category, first_seen_at, status, attributes
             FROM registry.devices
             {where_sql}
             ORDER BY first_seen_at DESC, brand
@@ -460,6 +540,36 @@ def products_page(request: Request, page: int = 1, registry: str = "", brand: st
             "selected_brand": brand,
             "selected_model": model,
         },
+    )
+
+
+@app.get("/products/{registry_key}/{external_id}")
+def product_detail(request: Request, registry_key: str, external_id: str):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT * FROM registry.devices WHERE registry_key = %s AND external_id = %s",
+            (registry_key, external_id),
+        )
+        device = cur.fetchone()
+
+        crawl_rows = []
+        if device is not None:
+            cur.execute(
+                """
+                SELECT run_at, item_count, new_count, removed_count, status, crawl_mode
+                FROM registry.crawl_log WHERE registry_key = %s
+                ORDER BY run_at DESC LIMIT 5
+                """,
+                (registry_key,),
+            )
+            crawl_rows = cur.fetchall()
+
+    if device is None:
+        return RedirectResponse("/products", status_code=303)
+
+    return templates.TemplateResponse(
+        "product_detail.html",
+        {"request": request, "device": device, "crawl_rows": crawl_rows},
     )
 
 

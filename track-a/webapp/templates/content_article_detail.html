@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ article.title or "(không có tiêu đề)" }}</h1>
+<p class="muted" style="margin-top: -0.75rem; margin-bottom: 1.25rem">
+  <a href="/content/articles">← Quay lại danh sách</a>
+</p>
+
+<div class="card">
+  <table>
+    <tr><td class="muted">Nguồn</td><td>{{ article.source_name }} (<code>{{ article.source_slug }}</code>, tier {{ article.tier }})</td></tr>
+    <tr><td class="muted">Tác giả</td><td>{{ article.author or "-" }}</td></tr>
+    <tr><td class="muted">Đăng lúc</td><td>{{ article.published_at or "-" }}</td></tr>
+    <tr><td class="muted">Crawl lúc</td><td>{{ article.first_seen_at }}</td></tr>
+    <tr><td class="muted">Ngôn ngữ</td><td>{{ article.lang or "-" }}</td></tr>
+    <tr><td class="muted">Số từ</td><td>{{ article.word_count or 0 }}</td></tr>
+    <tr><td class="muted">Extract status</td><td><span class="badge {{ 'active' if article.extract_status == 'ok' else 'failed' }}">{{ article.extract_status }}</span></td></tr>
+    <tr><td class="muted">URL gốc</td><td><a href="{{ article.original_url }}" target="_blank" rel="noopener">{{ article.original_url }}</a></td></tr>
+    <tr><td class="muted">Canonical URL</td><td class="muted">{{ article.canonical_url }}</td></tr>
+  </table>
+</div>
+
+<h2>Nội dung (body_text)</h2>
+<div class="card">
+  <pre style="white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6">{{ article.body_text }}</pre>
+</div>
+{% endblock %}

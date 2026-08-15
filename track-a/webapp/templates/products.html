@@ -32,7 +32,7 @@
     <tr>
       <td>{{ d.registry_key }}</td>
       <td>{{ d.brand }}</td>
-      <td>{{ d.model }}</td>
+      <td><a href="/products/{{ d.registry_key | urlencode }}/{{ d.external_id | urlencode }}">{{ d.model }}</a></td>
       <td class="muted">{{ d.category or "" }}</td>
       <td>{{ d.first_seen_at }}</td>
       <td><span class="badge {{ 'active' if d.status == 'active' else 'failed' }}">{{ d.status }}</span></td>
