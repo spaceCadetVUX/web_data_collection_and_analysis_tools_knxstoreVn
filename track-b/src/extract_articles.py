@@ -10,10 +10,12 @@ news.source_health. Tách biệt hoàn toàn với track-a/src/ (crawl sản ph�
     extract_rule.list_selector (CSS selector, xem migration 0008), rồi fetch + extract
     từng bài con như "manual".
 
-Dedupe tầng 1 (canonical URL, bỏ tracking param) làm ngay trong script này — UNIQUE
-constraint trên news.articles.canonical_url là chốt chặn cuối. Dedupe tầng 2 (SimHash) CHƯA
-làm ở đây (đó là việc B2) — nhưng simhash được tính và lưu sẵn luôn vì đã có body_text
-trong tay, tránh phải backfill lại toàn bộ articles sau này.
+Dedupe 2 tầng (docs/plan.md §5.1, §5.2), cả 2 làm ngay trong script này:
+  - Tầng 1: canonical URL (bỏ tracking param) — UNIQUE constraint trên
+    news.articles.canonical_url là chốt chặn cuối.
+  - Tầng 2: SimHash 64-bit trên body_text, Hamming distance <= 3 coi là trùng — query qua
+    4 band index (simhash_b0..b3, pigeonhole principle) rồi tính Hamming chính xác trên tập
+    candidate, xem find_near_duplicate(). Bài trùng bị bỏ qua (không insert), không phải lỗi.
 
 Nguồn requires_js=true (hiện chỉ có androidcentral-smart-home) bị BỎ QUA hoàn toàn — set này
 cần Playwright (B6, chưa build) để lấy được link/nội dung thật, fetch bằng requests thường
@@ -94,6 +96,38 @@ def _simhash_bands(fingerprint: int) -> tuple[int, int, int, int]:
     khớp gần đúng (Hamming distance nhỏ) nhanh hơn quét toàn bộ bảng ở B2."""
     mask16 = (1 << 16) - 1
     return tuple((fingerprint >> (i * 16)) & mask16 for i in range(4))
+
+
+_MASK64 = (1 << 64) - 1
+HAMMING_THRESHOLD = 3  # xem docs/plan.md §5.2 — 2 bài coi là trùng nếu Hamming distance <= 3
+
+
+def _hamming_distance(a_signed: int, b_signed: int) -> int:
+    """XOR trên biểu diễn unsigned 64-bit (mask lại vì Python int âm bị sign-extend vô hạn),
+    rồi đếm bit khác nhau."""
+    return bin((a_signed & _MASK64) ^ (b_signed & _MASK64)).count("1")
+
+
+def find_near_duplicate(cur, fingerprint_signed: int, b0: int, b1: int, b2: int, b3: int):
+    """Dedupe tầng 2 (docs/plan.md §5.2): pigeonhole — nếu Hamming distance <= 3 trên 64 bit
+    chia 4 band 16-bit, ít nhất 1 band phải trùng hệt. Query theo band index (không quét toàn
+    bảng), rồi tính Hamming chính xác trên tập candidate. Trả (article_id, distance) của bài
+    trùng gần nhất nếu có, ngược lại (None, None)."""
+    cur.execute(
+        """
+        SELECT id, title, simhash FROM news.articles
+        WHERE simhash_b0 = %s OR simhash_b1 = %s OR simhash_b2 = %s OR simhash_b3 = %s
+        """,
+        (b0, b1, b2, b3),
+    )
+    best_id, best_title, best_distance = None, None, None
+    for row in cur.fetchall():
+        if row["simhash"] is None:
+            continue
+        distance = _hamming_distance(fingerprint_signed, row["simhash"])
+        if distance <= HAMMING_THRESHOLD and (best_distance is None or distance < best_distance):
+            best_id, best_title, best_distance = row["id"], row["title"], distance
+    return best_id, best_title, best_distance
 
 
 def _extract_links(html: str, selector: str, base_url: str) -> list[str]:
@@ -189,7 +223,7 @@ def process_source(conn, session: requests.Session, source: dict,
     cur = conn.cursor()
     label = source["slug"]
     started = time.monotonic()
-    item_count, new_count = 0, 0
+    item_count, new_count, dup_count = 0, 0, 0
     fetch_error = None
     http_status = None
 
@@ -237,7 +271,17 @@ def process_source(conn, session: requests.Session, source: dict,
             try:
                 fingerprint = _simhash(article["body_text"])
                 b0, b1, b2, b3 = _simhash_bands(fingerprint)
+                fingerprint_signed = _to_signed_bigint(fingerprint)
                 word_count = len(article["body_text"].split())
+
+                dup_id, dup_title, dup_distance = find_near_duplicate(cur, fingerprint_signed, b0, b1, b2, b3)
+                if dup_id is not None:
+                    dup_count += 1
+                    print(f"[{label}] ~ Trùng nội dung (Hamming={dup_distance}) với bài đã có "
+                          f"{dup_title!r}, bỏ qua: {article['title']!r}")
+                    conn.commit()  # commit để giữ nguyên state sạch, không có gì để rollback
+                    time.sleep(delay)
+                    continue
 
                 cur.execute(
                     """
@@ -250,7 +294,7 @@ def process_source(conn, session: requests.Session, source: dict,
                     """,
                     (source["id"], canonical, url, article["title"], article["author"],
                      article["published_at"], source["lang"], article["body_text"], word_count,
-                     _to_signed_bigint(fingerprint), b0, b1, b2, b3),
+                     fingerprint_signed, b0, b1, b2, b3),
                 )
                 if cur.rowcount:
                     new_count += 1
@@ -262,6 +306,9 @@ def process_source(conn, session: requests.Session, source: dict,
                 continue
 
             time.sleep(delay)
+
+        if dup_count:
+            print(f"[{label}] Bỏ qua {dup_count} bài trùng nội dung (SimHash, dedupe tầng 2).")
 
     finally:
         conn.rollback()  # đảm bảo transaction sạch nếu có exception chưa được bắt ở trên
