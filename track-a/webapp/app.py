@@ -431,7 +431,7 @@ def content_articles_page(request: Request, page: int = 1, source_slug: str = ""
         cur.execute(
             f"""
             SELECT a.id, a.title, a.author, a.published_at, a.first_seen_at, a.word_count,
-                   a.extract_status, s.slug AS source_slug, s.tier
+                   a.extract_status, a.original_url, s.slug AS source_slug, s.tier
             FROM news.articles a JOIN news.sources s ON s.id = a.source_id
             {where_sql}
             ORDER BY a.first_seen_at DESC

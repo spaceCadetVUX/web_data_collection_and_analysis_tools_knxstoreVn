@@ -23,11 +23,17 @@
 
 <div class="card">
   <table>
-    <tr><th>Tiêu đề</th><th>Nguồn</th><th>Đăng lúc</th><th>Crawl lúc</th><th>Từ</th><th>Status</th></tr>
+    <tr><th>Tiêu đề</th><th>Data</th><th>Đăng lúc</th><th>Crawl lúc</th><th>Từ</th><th>Status</th></tr>
     {% for a in articles %}
     <tr>
-      <td><a href="/content/articles/{{ a.id }}">{{ a.title or "(không có tiêu đề)" }}</a></td>
-      <td class="muted">{{ a.source_slug }}</td>
+      <td>
+        {% if a.original_url %}
+        <a href="{{ a.original_url }}" target="_blank" rel="noopener">{{ a.title or "(không có tiêu đề)" }}</a>
+        {% else %}
+        {{ a.title or "(không có tiêu đề)" }}
+        {% endif %}
+      </td>
+      <td><a href="/content/articles/{{ a.id }}"><button class="secondary" type="button">📄 Xem data</button></a></td>
       <td class="muted">{{ a.published_at or "-" }}</td>
       <td class="muted">{{ a.first_seen_at }}</td>
       <td>{{ a.word_count or 0 }}</td>
