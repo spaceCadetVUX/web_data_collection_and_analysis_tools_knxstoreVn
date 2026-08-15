@@ -4,3 +4,5 @@ jinja2
 psycopg2-binary
 apscheduler
 python-multipart
+requests
+beautifulsoup4

@@ -5,6 +5,8 @@ import re
 import threading
 from datetime import datetime
 
+import requests
+from bs4 import BeautifulSoup
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -289,6 +291,59 @@ def toggle_source(source_id: int):
         )
         conn.commit()
     return RedirectResponse("/settings", status_code=303)
+
+
+TEST_FETCH_USER_AGENT = "KNXStore-NewsBot/1.0 (+https://knxstore.vn; internal content pipeline tool)"
+
+
+@app.post("/settings/sources/{source_id}/test")
+def test_source(source_id: int):
+    """Test nhanh 1 nguồn — chỉ fetch + kiểm tra selector, KHÔNG lưu gì vào news.articles.
+    Dùng để xác nhận nguồn còn sống + extract_rule còn khớp mà không cần chạy full fetch."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT * FROM news.sources WHERE id = %s", (source_id,))
+        source = cur.fetchone()
+
+    if source is None:
+        return {"ok": False, "error": "Không tìm thấy nguồn"}
+
+    if source["requires_js"]:
+        return {"ok": False, "error": "requires_js=true — cần Playwright (B6, chưa build), không test được kiểu này"}
+
+    try:
+        resp = requests.get(source["url"], headers={"User-Agent": TEST_FETCH_USER_AGENT}, timeout=15)
+    except requests.RequestException as exc:
+        return {"ok": False, "error": f"Fetch lỗi: {exc}"}
+
+    result = {"ok": resp.status_code == 200, "http_status": resp.status_code, "size_bytes": len(resp.content)}
+    if not result["ok"]:
+        return result
+
+    if source["kind"] == "manual":
+        result["detail"] = "manual (1 URL = 1 bài) — status OK là đủ, không cần selector"
+        return result
+
+    if source["kind"] == "html_list":
+        rule = source["extract_rule"] or {}
+        card_selector, link_selector = rule.get("card_selector"), rule.get("link_selector")
+        if not card_selector or not link_selector:
+            result["error"] = "extract_rule thiếu card_selector/link_selector"
+            return result
+        soup = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.select(card_selector)
+        sample_titles = []
+        for card in cards[:5]:
+            link = card.select_one(link_selector)
+            if link:
+                sample_titles.append(link.get_text(strip=True)[:60])
+        result["candidate_count"] = len(cards)
+        result["sample_titles"] = sample_titles
+        if len(cards) == 0:
+            result["ok"] = False
+            result["error"] = "0 card khớp card_selector — site đổi giao diện hoặc selector sai"
+        return result
+
+    return {"ok": False, "error": f"kind '{source['kind']}' chưa hỗ trợ test"}
 
 
 @app.get("/content")
