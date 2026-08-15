@@ -6,9 +6,12 @@ news.source_health. Tách biệt hoàn toàn với track-a/src/ (crawl sản ph�
 
 2 kind nguồn được hỗ trợ (xem CHECK constraint news.sources.kind):
   - manual: 1 URL = 1 bài viết cụ thể, fetch + extract thẳng.
-  - html_list: URL là trang chuyên mục/listing — bóc tách link bài con qua
-    extract_rule.list_selector (CSS selector, xem migration 0008), rồi fetch + extract
-    từng bài con như "manual".
+  - html_list: URL là trang chuyên mục/listing — mỗi bài trong danh sách là 1 "card"
+    (extract_rule.card_selector), trong đó link_selector tìm thẻ <a>, date_selector (+
+    date_attr tuỳ chọn) tìm ngày đăng ngay trên card — xem migration 0013. Có ngày ngay từ
+    trang listing (không cần fetch từng bài) cho phép --after-date dừng lật trang SỚM, không
+    tốn request cho bài ngoài khoảng ngày cần lấy (trang sắp mới nhất trước — đã verify ở
+    migration 0010).
 
 Dedupe 2 tầng (docs/plan.md §5.1, §5.2), cả 2 làm ngay trong script này:
   - Tầng 1: canonical URL (bỏ tracking param) — UNIQUE constraint trên
@@ -34,6 +37,7 @@ import json
 import re
 import sys
 import time
+from datetime import timezone
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qsl, urlencode
 
 import psycopg2
@@ -41,6 +45,7 @@ import psycopg2.extras
 import requests
 import trafilatura
 from bs4 import BeautifulSoup
+from dateutil import parser as dateutil_parser
 
 USER_AGENT = "KNXStore-NewsBot/1.0 (+https://knxstore.vn; internal content pipeline tool)"
 
@@ -130,20 +135,51 @@ def find_near_duplicate(cur, fingerprint_signed: int, b0: int, b1: int, b2: int,
     return best_id, best_title, best_distance
 
 
-def _extract_links(html: str, selector: str, base_url: str) -> list[str]:
+def _parse_card_date(card, date_selector: str | None, date_attr: str | None):
+    """Đọc ngày đăng ngay trên card (listing page) — không cần fetch từng bài. Trả None nếu
+    không có date_selector, không tìm thấy phần tử, hoặc parse lỗi (fail open — KHÔNG loại bài
+    chỉ vì không đọc được ngày, xem docstring discover_article_urls)."""
+    if not date_selector:
+        return None
+    el = card.select_one(date_selector)
+    if not el:
+        return None
+    raw = el.get(date_attr) if date_attr else el.get_text(strip=True)
+    if not raw:
+        return None
+    try:
+        dt = dateutil_parser.parse(raw)
+    except (ValueError, OverflowError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _extract_cards(html: str, card_selector: str, link_selector: str, date_selector, date_attr, base_url: str):
+    """Trả list (absolute_url, published_dt_or_None) theo đúng thứ tự xuất hiện trên trang."""
     soup = BeautifulSoup(html, "html.parser")
-    urls = []
-    for a in soup.select(selector):
-        href = a.get("href")
-        if href:
-            urls.append(urljoin(base_url, href))
-    return urls
+    results = []
+    for card in soup.select(card_selector):
+        link = card.select_one(link_selector)
+        href = link.get("href") if link else None
+        if not href:
+            continue
+        results.append((urljoin(base_url, href), _parse_card_date(card, date_selector, date_attr)))
+    return results
 
 
-def discover_article_urls(session: requests.Session, source: dict, max_pages: int = 1) -> list[str]:
+def discover_article_urls(session: requests.Session, source: dict, max_pages: int = 1, after_date=None) -> list[str]:
     """Trả list URL bài viết cần fetch cho 1 nguồn. kind=manual -> chính URL đó. kind=html_list
-    -> bóc tách link con qua extract_rule.list_selector, giữ nguyên thứ tự xuất hiện, loại
-    trùng lặp trong cùng 1 lần bóc tách.
+    -> bóc tách từng "card" (extract_rule.card_selector/link_selector/date_selector, xem
+    migration 0013), giữ nguyên thứ tự xuất hiện, loại trùng trong cùng 1 lần bóc tách.
+
+    after_date (datetime, có tzinfo) -> BỎ QUA bài có ngày đăng CŨ HƠN mốc này. Vì trang
+    listing sắp mới nhất trước (verify ở migration 0010) và ngày đọc được ngay từ card (không
+    cần fetch từng bài), gặp 1 bài ngoài khoảng ngày là DỪNG LUÔN toàn bộ discovery (không lật
+    thêm trang, không xét thêm card nào trên trang hiện tại) — mọi thứ sau đó chỉ càng cũ hơn.
+    Bài không đọc được ngày (date_selector thiếu, parse lỗi) KHÔNG bị loại — fail open, tránh
+    mất nội dung chỉ vì lỗi đọc ngày.
 
     max_pages > 1 + có extract_rule.page_url_template -> lật thêm trang 2..max_pages (dùng
     "Fetch toàn bộ") — xem migration 0010 để biết pattern đã verify thật cho từng site (không
@@ -152,44 +188,64 @@ def discover_article_urls(session: requests.Session, source: dict, max_pages: in
     if source["kind"] == "manual":
         return [source["url"]]
 
-    if source["kind"] == "html_list":
-        rule = source["extract_rule"] or {}
-        selector = rule.get("list_selector")
-        if not selector:
-            raise ValueError(
-                f"Nguồn '{source['slug']}' kind=html_list nhưng extract_rule.list_selector "
-                f"rỗng — không biết bóc tách link bài con thế nào."
-            )
-        resp = session.get(source["url"], timeout=20)
-        resp.raise_for_status()
+    if source["kind"] != "html_list":
+        raise ValueError(f"kind '{source['kind']}' chưa hỗ trợ — script này chỉ xử lý manual/html_list")
 
-        seen, urls = set(), []
-        for u in _extract_links(resp.text, selector, source["url"]):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
+    rule = source["extract_rule"] or {}
+    card_selector = rule.get("card_selector")
+    link_selector = rule.get("link_selector")
+    if not card_selector or not link_selector:
+        raise ValueError(
+            f"Nguồn '{source['slug']}' kind=html_list nhưng thiếu extract_rule.card_selector/"
+            f"link_selector — không biết bóc tách link bài con thế nào (xem migration 0013)."
+        )
+    date_selector = rule.get("date_selector")
+    date_attr = rule.get("date_attr")
 
-        template = rule.get("page_url_template")
-        if max_pages > 1 and template:
-            for n in range(2, max_pages + 1):
-                page_url = template.format(n=n)
-                resp = session.get(page_url, timeout=20)
-                if resp.status_code == 404:
-                    print(f"  (trang {n}: 404 — đã hết trang thật, dừng lật trang)")
+    resp = session.get(source["url"], timeout=20)
+    resp.raise_for_status()
+    cards = _extract_cards(resp.text, card_selector, link_selector, date_selector, date_attr, source["url"])
+
+    seen, urls = set(), []
+    stopped_on_date = False
+    for url, pub_date in cards:
+        if after_date is not None and pub_date is not None and pub_date < after_date:
+            print(f"  (gặp bài {pub_date.date()} cũ hơn --after-date={after_date.date()}, dừng lại)")
+            stopped_on_date = True
+            break
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    template = rule.get("page_url_template")
+    if not stopped_on_date and max_pages > 1 and template:
+        for n in range(2, max_pages + 1):
+            page_url = template.format(n=n)
+            resp = session.get(page_url, timeout=20)
+            if resp.status_code == 404:
+                print(f"  (trang {n}: 404 — đã hết trang thật, dừng lật trang)")
+                break
+            resp.raise_for_status()
+            page_cards = _extract_cards(resp.text, card_selector, link_selector, date_selector, date_attr, page_url)
+
+            new_on_page = False
+            for url, pub_date in page_cards:
+                if after_date is not None and pub_date is not None and pub_date < after_date:
+                    print(f"  (trang {n}: gặp bài {pub_date.date()} cũ hơn --after-date="
+                          f"{after_date.date()}, dừng lật trang)")
+                    stopped_on_date = True
                     break
-                resp.raise_for_status()
-                page_urls = _extract_links(resp.text, selector, page_url)
-                new_on_page = [u for u in page_urls if u not in seen]
-                if not new_on_page:
-                    print(f"  (trang {n}: không có link mới nào — dừng lật trang, có thể "
-                          f"site redirect ngược về trang trước)")
-                    break
-                for u in new_on_page:
-                    seen.add(u)
-                    urls.append(u)
-        return urls
-
-    raise ValueError(f"kind '{source['kind']}' chưa hỗ trợ — script này chỉ xử lý manual/html_list")
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+                    new_on_page = True
+            if stopped_on_date:
+                break
+            if not new_on_page:
+                print(f"  (trang {n}: không có link mới nào — dừng lật trang, có thể "
+                      f"site redirect ngược về trang trước)")
+                break
+    return urls
 
 
 def extract_article(session: requests.Session, url: str) -> dict | None:
@@ -219,7 +275,7 @@ def extract_article(session: requests.Session, url: str) -> dict | None:
 
 
 def process_source(conn, session: requests.Session, source: dict,
-                    max_new: int, delay: float, max_pages: int = 1) -> None:
+                    max_new: int, delay: float, max_pages: int = 1, after_date=None) -> None:
     cur = conn.cursor()
     label = source["slug"]
     started = time.monotonic()
@@ -236,7 +292,7 @@ def process_source(conn, session: requests.Session, source: dict,
             return
 
         try:
-            candidate_urls = discover_article_urls(session, source, max_pages=max_pages)
+            candidate_urls = discover_article_urls(session, source, max_pages=max_pages, after_date=after_date)
             http_status = 200
         except requests.RequestException as exc:
             http_status = getattr(exc.response, "status_code", None)
@@ -351,7 +407,19 @@ def main():
                               "'Fetch toàn bộ' nên truyền số lớn hơn. Nguồn không có "
                               "extract_rule.page_url_template chỉ có đúng 1 trang thật, tham số "
                               "này không có tác dụng với nguồn đó (xem migration 0010).")
+    parser.add_argument("--after-date", default=None,
+                         help="Chỉ lấy bài đăng SAU ngày này (định dạng YYYY-MM-DD, vd. "
+                              "2026-08-01). Đọc ngày ngay từ trang listing (card_selector/"
+                              "date_selector, migration 0013), KHÔNG cần fetch từng bài — gặp "
+                              "bài cũ hơn là dừng discovery luôn (trang sắp mới nhất trước). "
+                              "Bài không đọc được ngày vẫn được lấy (fail open).")
     args = parser.parse_args()
+
+    after_date = None
+    if args.after_date:
+        after_date = dateutil_parser.parse(args.after_date)
+        if after_date.tzinfo is None:
+            after_date = after_date.replace(tzinfo=timezone.utc)
 
     conn = psycopg2.connect(args.db_url, cursor_factory=psycopg2.extras.RealDictCursor)
     conn.autocommit = False
@@ -374,7 +442,8 @@ def main():
     failed_sources = []
     for source in sources:
         try:
-            process_source(conn, session, source, args.max_new_per_source, args.delay, args.max_pages)
+            process_source(conn, session, source, args.max_new_per_source, args.delay,
+                            args.max_pages, after_date)
         except Exception as exc:  # noqa: BLE001 — 1 nguồn lỗi không được giết cả batch 35 nguồn
             conn.rollback()
             failed_sources.append(source["slug"])

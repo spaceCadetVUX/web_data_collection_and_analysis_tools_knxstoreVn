@@ -38,27 +38,34 @@ def _set_progress(progress: dict | None, **kwargs):
 def run_content_pipeline(
     mode: str,
     max_pages: int = 1,
+    after_date: str | None = None,
     process_registry: dict | None = None,
     progress: dict | None = None,
 ) -> dict:
     """max_pages: số trang listing lật qua mỗi nguồn html_list (xem migration 0010/0011) —
     chỉ có ý nghĩa ở mode='full'; mode='latest' luôn dùng 1 (không lật trang, chỉ lấy vài
-    bài mới nhất mỗi nguồn cho nhanh)."""
+    bài mới nhất mỗi nguồn cho nhanh). after_date (YYYY-MM-DD hoặc None): chỉ lấy bài đăng
+    sau ngày này, đọc ngay từ listing page, dừng sớm khi gặp bài cũ hơn (migration 0013/0014)
+    — chỉ áp dụng mode='full', bỏ qua ở mode='latest'."""
     if mode not in _MAX_NEW_PER_SOURCE:
         raise ValueError(f"mode phải là 'full' hoặc 'latest', nhận '{mode}'")
     max_new = _MAX_NEW_PER_SOURCE[mode]
     effective_max_pages = max_pages if mode == "full" else 1
+    effective_after_date = after_date if (mode == "full" and after_date) else None
     started = time.monotonic()
 
     _set_progress(progress, phase=f"Fetch content ({mode})", current=0, total=None, percent=None)
     _append_log(progress, f"=== extract_articles.py --max-new-per-source {max_new} "
-                           f"--max-pages {effective_max_pages} ===")
+                           f"--max-pages {effective_max_pages}"
+                           f"{f' --after-date {effective_after_date}' if effective_after_date else ''} ===")
 
     cmd = [
         sys.executable, "-u", str(TRACK_B_SRC / "extract_articles.py"),
         "--db-url", DB_URL, "--max-new-per-source", str(max_new),
         "--max-pages", str(effective_max_pages),
     ]
+    if effective_after_date:
+        cmd += ["--after-date", str(effective_after_date)]
     proc = subprocess.Popen(
         cmd, cwd=str(TRACK_B_SRC), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1,

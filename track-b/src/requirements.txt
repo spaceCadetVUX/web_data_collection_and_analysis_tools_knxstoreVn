@@ -2,4 +2,5 @@ requests
 beautifulsoup4
 trafilatura
 lxml_html_clean
+python-dateutil
 psycopg2-binary

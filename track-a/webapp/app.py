@@ -77,11 +77,12 @@ _content_lock = threading.Lock()
 _content_process_registry = {"proc": None}
 
 
-def _run_content_background(mode: str, max_pages: int = 1):
+def _run_content_background(mode: str, max_pages: int = 1, after_date: str | None = None):
     try:
         result = run_content_pipeline(
             mode=mode,
             max_pages=max_pages,
+            after_date=after_date,
             process_registry=_content_process_registry,
             progress=_content_state["progress"],
         )
@@ -296,7 +297,7 @@ def content_page(request: Request):
         cur.execute("SELECT count(*) AS total FROM news.articles")
         total_articles = cur.fetchone()["total"]
 
-        cur.execute("SELECT full_fetch_max_pages FROM news.content_settings WHERE id = 1")
+        cur.execute("SELECT full_fetch_max_pages, full_fetch_after_date FROM news.content_settings WHERE id = 1")
         content_settings = cur.fetchone()
 
         cur.execute(
@@ -334,15 +335,15 @@ def content_page(request: Request):
 
 
 @app.post("/content/settings/max-pages")
-def content_update_max_pages(full_fetch_max_pages: int = Form(...)):
+def content_update_max_pages(full_fetch_max_pages: int = Form(...), full_fetch_after_date: str = Form("")):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
             UPDATE news.content_settings
-            SET full_fetch_max_pages = %s, updated_at = now()
+            SET full_fetch_max_pages = %s, full_fetch_after_date = %s, updated_at = now()
             WHERE id = 1
             """,
-            (full_fetch_max_pages,),
+            (full_fetch_max_pages, full_fetch_after_date or None),
         )
         conn.commit()
     return RedirectResponse("/content", status_code=303)
@@ -360,10 +361,15 @@ def content_trigger_full():
         _content_state["progress"].clear()
 
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT full_fetch_max_pages FROM news.content_settings WHERE id = 1")
-        max_pages = cur.fetchone()["full_fetch_max_pages"]
+        cur.execute("SELECT full_fetch_max_pages, full_fetch_after_date FROM news.content_settings WHERE id = 1")
+        settings_row = cur.fetchone()
+        max_pages = settings_row["full_fetch_max_pages"]
+        after_date = settings_row["full_fetch_after_date"]
 
-    thread = threading.Thread(target=_run_content_background, args=("full", max_pages), daemon=True)
+    thread = threading.Thread(
+        target=_run_content_background, args=("full", max_pages, str(after_date) if after_date else None),
+        daemon=True,
+    )
     thread.start()
     return RedirectResponse("/content", status_code=303)
 

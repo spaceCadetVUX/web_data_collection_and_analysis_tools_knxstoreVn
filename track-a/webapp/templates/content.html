@@ -28,9 +28,13 @@
   <p class="muted" style="margin-top: 0.6rem">
     <strong>Fetch toàn bộ</strong>: lật tối đa <strong>{{ content_settings.full_fetch_max_pages }} trang</strong>
     listing mỗi nguồn (tính từ trang mới nhất), tối đa 1000 bài mới/nguồn — nguồn nào không
-    có nhiều trang thật thì tự dừng sớm (404 hoặc hết link mới), không phải lỗi.<br>
-    <strong>Fetch bài mới nhất</strong>: luôn chỉ 1 trang, tối đa 3 bài mới/nguồn — nhanh, an
-    toàn chạy thường xuyên để check có bài mới không.<br>
+    có nhiều trang thật thì tự dừng sớm (404 hoặc hết link mới), không phải lỗi.
+    {% if content_settings.full_fetch_after_date %}
+    Chỉ lấy bài đăng sau <strong>{{ content_settings.full_fetch_after_date }}</strong> — đọc
+    ngày ngay từ listing, dừng lật trang sớm khi gặp bài cũ hơn (không cần fetch để biết).
+    {% endif %}<br>
+    <strong>Fetch bài mới nhất</strong>: luôn chỉ 1 trang, tối đa 3 bài mới/nguồn, không áp
+    dụng lọc ngày — nhanh, an toàn chạy thường xuyên để check có bài mới không.<br>
     Cả 2 đều bỏ qua nguồn <code>requires_js=true</code> (hiện chỉ Android Central — cần
     Playwright/B6, chưa build).
   </p>
@@ -39,6 +43,9 @@
     <label class="muted" for="full_fetch_max_pages">Số trang lật khi "Fetch toàn bộ":</label>
     <input type="number" id="full_fetch_max_pages" name="full_fetch_max_pages" min="1" max="50"
            value="{{ content_settings.full_fetch_max_pages }}" style="width: 5rem">
+    <label class="muted" for="full_fetch_after_date">Chỉ lấy bài sau ngày:</label>
+    <input type="date" id="full_fetch_after_date" name="full_fetch_after_date"
+           value="{{ content_settings.full_fetch_after_date or '' }}" style="width: 10rem">
     <button type="submit" class="secondary">Lưu</button>
   </form>
 
