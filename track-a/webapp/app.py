@@ -200,6 +200,11 @@ def settings_page(request: Request):
         brands = cur.fetchall()
         cur.execute("SELECT * FROM news.sources ORDER BY category, name")
         news_sources = cur.fetchall()
+        cur.execute(
+            "SELECT schedule_enabled, schedule_frequency, schedule_weekday, schedule_hour, schedule_minute "
+            "FROM news.content_settings WHERE id = 1"
+        )
+        content_schedule = cur.fetchone()
 
     return templates.TemplateResponse(
         "settings.html",
@@ -211,6 +216,7 @@ def settings_page(request: Request):
             "source_kinds": SOURCE_KINDS,
             "source_categories": SOURCE_CATEGORIES,
             "weekday_labels": WEEKDAY_LABELS,
+            "content_schedule": content_schedule,
         },
     )
 
@@ -230,6 +236,33 @@ def update_schedule(weekday: int = Form(...), hour: int = Form(...), minute: int
         conn.commit()
     from scheduler import reschedule
     reschedule()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/content-schedule")
+def update_content_schedule(
+    schedule_enabled: bool = Form(False),
+    frequency: str = Form("daily"),
+    weekday: int = Form(0),
+    hour: int = Form(...),
+    minute: int = Form(...),
+):
+    """Lịch cho Track B (mode='latest') — xem scheduler.reschedule_content(). Tách riêng khỏi
+    update_schedule() (Track A, weekly cố định) vì khác bảng (news.content_settings), có cờ
+    bật/tắt riêng, và frequency chọn được daily/weekly (weekday chỉ áp dụng khi weekly)."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE news.content_settings
+            SET schedule_enabled = %s, schedule_frequency = %s, schedule_weekday = %s,
+                schedule_hour = %s, schedule_minute = %s, updated_at = now()
+            WHERE id = 1
+            """,
+            (schedule_enabled, frequency, weekday, hour, minute),
+        )
+        conn.commit()
+    from scheduler import reschedule_content
+    reschedule_content()
     return RedirectResponse("/settings", status_code=303)
 
 

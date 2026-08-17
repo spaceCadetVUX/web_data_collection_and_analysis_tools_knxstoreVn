@@ -27,9 +27,10 @@
   <p class="muted" style="margin-top: 0.6rem">
     <strong>Crawl sản phẩm — toàn bộ</strong>: KNX (848 trang) + Matter → import → diff → gửi Zalo (~15-20 phút).
     Bắt được thiết bị bị gỡ khỏi registry — nên chạy định kỳ (vd. hàng tháng).<br>
-    <strong>Crawl sản phẩm — mới nhất</strong>: chỉ KNX, dừng ngay khi gặp thiết bị đã biết (trang danh
-    sách sắp xếp mới nhất trước) — vài giây tới vài chục giây. Không bắt được thiết bị bị gỡ,
-    không đụng tới Matter — dùng để check nhanh, thường xuyên.
+    <strong>Crawl sản phẩm — mới nhất</strong>: KNX dừng ngay khi gặp thiết bị đã biết (trang danh
+    sách sắp xếp mới nhất trước) — vài giây tới vài chục giây; Matter/CSA luôn crawl full (API
+    không hỗ trợ incremental, nhưng rẻ — vài giây). Không bắt được thiết bị KNX bị gỡ khỏi
+    registry (Matter thì có, vì luôn full) — dùng để check nhanh, thường xuyên.
   </p>
 
   {% if pipeline_state.running %}

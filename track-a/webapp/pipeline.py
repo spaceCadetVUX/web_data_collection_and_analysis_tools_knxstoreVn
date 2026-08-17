@@ -194,17 +194,30 @@ def run_incremental_pipeline(
     process_registry: dict | None = None,
     progress: dict | None = None,
 ) -> dict:
-    """Bản rút gọn của run_full_pipeline: chỉ crawl KNX incremental (xem _run_incremental_knx),
-    KHÔNG đụng tới Matter, rồi vẫn tính diff + gửi Zalo như bình thường nếu có thiết bị mới
-    khớp brands_of_interest. Dùng cho check thường xuyên (hàng ngày) — rẻ, nhanh; full crawl
-    (run_full_pipeline) vẫn cần chạy định kỳ (vd. hàng tháng) để bắt thiết bị bị gỡ + Matter."""
+    """Bản rút gọn của run_full_pipeline: KNX crawl incremental (xem _run_incremental_knx —
+    trang 0, known-ids-file, dừng sớm khi gặp đủ thiết bị đã biết). Matter/CSA luôn crawl FULL
+    — API DCL (crawl_matter_devices.py) không có known-ids/sort-mới-nhất như KNX nên không thể
+    làm incremental thật, nhưng full rất rẻ (~5-6 request, vài giây) nên gọi full mỗi lần không
+    đáng lo — đây cũng là full crawl thật (crawl_mode='full' trong crawl_log) nên vẫn bắt được
+    thiết bị Matter bị gỡ khỏi registry, chỉ riêng KNX là không (xem _run_incremental_knx).
+
+    Miễn 1 trong 2 nguồn crawl+import thành công là vẫn tính diff + gửi Zalo — query_diff() so
+    latest_run 'ok' riêng từng registry_key (xem DIFF_QUERY), nên 1 nguồn lỗi không làm sai diff
+    của nguồn còn lại, chỉ đơn giản là nguồn lỗi chưa có gì mới để báo lần này.
+
+    Dùng cho check thường xuyên (hàng ngày) — rẻ, nhanh hơn run_full_pipeline (vẫn cần chạy định
+    kỳ riêng, vd. hàng tháng, để bắt thiết bị KNX bị gỡ)."""
     started = time.monotonic()
     knx_ok, knx_log = _run_incremental_knx(process_registry, progress)
+    matter_ok, matter_log = _run_crawl_and_import(
+        "matter_csa", "crawl_matter_devices.py", "_weekly_matter.csv", process_registry, progress
+    )
+    crawl_log_text = "\n\n".join([knx_log, matter_log])
 
     device_count, devices, message = None, None, None
     send_ok, send_error = False, None
 
-    if knx_ok:
+    if knx_ok or matter_ok:
         _set_progress(progress, phase="Tính diff", current=None, total=None, percent=None)
         device_count, devices = query_diff()
         message = format_message(device_count, devices)
@@ -217,6 +230,15 @@ def run_incremental_pipeline(
     duration_ms = int((time.monotonic() - started) * 1000)
     status = "ok" if send_ok else ("failed" if send_error != "skipped_no_credential" else "skipped_no_credential")
 
+    # error lưu DB: giữ nguyên send_error để không phá logic status ở trên (so sánh chuỗi
+    # đúng "skipped_no_credential"), chỉ nối thêm ghi chú nguồn nào crawl lỗi (nếu có) khi
+    # vẫn gửi được digest bằng nguồn còn lại.
+    error_to_store = send_error
+    if knx_ok and not matter_ok:
+        error_to_store = (f"{error_to_store}; " if error_to_store else "") + "matter_crawl_or_import_failed"
+    elif matter_ok and not knx_ok:
+        error_to_store = (f"{error_to_store}; " if error_to_store else "") + "knx_crawl_or_import_failed"
+
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -224,14 +246,14 @@ def run_incremental_pipeline(
                 (trigger_type, device_count, message, send_status, error, duration_ms, pipeline_mode)
             VALUES (%s, %s, %s, %s, %s, %s, 'incremental')
             """,
-            (trigger_type, device_count, message, status, send_error, duration_ms),
+            (trigger_type, device_count, message, status, error_to_store, duration_ms),
         )
         conn.commit()
 
     return {
-        "knx_ok": knx_ok, "matter_ok": None, "stopped": False,
+        "knx_ok": knx_ok, "matter_ok": matter_ok, "stopped": False,
         "device_count": device_count, "message": message, "send_status": status,
-        "duration_ms": duration_ms, "crawl_log_text": knx_log,
+        "duration_ms": duration_ms, "crawl_log_text": crawl_log_text,
     }
 
 

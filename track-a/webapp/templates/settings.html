@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Settings</h1>
 
-<h2>Lịch weekly</h2>
+<h2>Lịch weekly — Track A (registry diff)</h2>
 <div class="card">
   <form method="post" action="/settings/schedule" class="row">
     <select name="weekday">
@@ -16,7 +16,42 @@
     <span class="muted">phút (giờ VN)</span>
     <button type="submit">Lưu lịch</button>
   </form>
-  <p class="muted" style="margin-top: 0.75rem">Lịch chỉ chạy khi webapp đang mở/chạy nền — không phải cron OS-level.</p>
+  <p class="muted" style="margin-top: 0.75rem">
+    Luôn chạy <strong>Crawl toàn bộ</strong> (KNX + Matter → import → diff → gửi Zalo). Lịch
+    chỉ chạy khi webapp đang mở/chạy nền — không phải cron OS-level.
+  </p>
+</div>
+
+<h2>Lịch tự động — Track B (content)</h2>
+<div class="card">
+  <form method="post" action="/settings/content-schedule" class="row">
+    <label class="muted">
+      <input type="checkbox" name="schedule_enabled" {% if content_schedule.schedule_enabled %}checked{% endif %}>
+      Bật tự động
+    </label>
+    <select name="frequency" id="content-frequency"
+            onchange="document.getElementById('content-weekday').style.display = this.value === 'weekly' ? 'inline-block' : 'none'">
+      <option value="daily" {% if content_schedule.schedule_frequency == 'daily' %}selected{% endif %}>Hàng ngày</option>
+      <option value="weekly" {% if content_schedule.schedule_frequency == 'weekly' %}selected{% endif %}>Hàng tuần</option>
+    </select>
+    <select name="weekday" id="content-weekday"
+            style="{% if content_schedule.schedule_frequency != 'weekly' %}display: none{% endif %}">
+      {% for label in weekday_labels %}
+      <option value="{{ loop.index0 }}" {% if content_schedule.schedule_weekday == loop.index0 %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input type="number" name="hour" min="0" max="23" value="{{ content_schedule.schedule_hour }}" style="width: 4rem">
+    <span class="muted">giờ</span>
+    <input type="number" name="minute" min="0" max="59" value="{{ content_schedule.schedule_minute }}" style="width: 4rem">
+    <span class="muted">phút (giờ VN)</span>
+    <button type="submit">Lưu lịch</button>
+  </form>
+  <p class="muted" style="margin-top: 0.75rem">
+    Luôn chạy <strong>Fetch bài mới nhất</strong> (rẻ, tối đa 3 bài mới/nguồn) — không phải
+    "Fetch toàn bộ", vẫn phải bấm tay ở trang Content khi cần quét backlog. Chọn
+    <strong>Hàng ngày</strong> hoặc <strong>Hàng tuần</strong> (chọn thêm thứ) tuỳ nhu cầu. Cũng
+    chỉ chạy khi webapp đang mở/chạy nền, giống lịch Track A ở trên.
+  </p>
 </div>
 
 <details class="section">
